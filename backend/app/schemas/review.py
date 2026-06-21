@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.schemas.common import (
     ApprovalStatus,
     Classification,
+    Department,
     DocumentType,
     EventType,
     Priority,
@@ -43,7 +44,7 @@ class IdentityReviewPayload(BaseModel):
     approval_status: ApprovalStatus
     summary: TicketSummary
     identity_issue: IdentityIssue
-    affected_departments: list[str]
+    affected_departments: list[Department]
     total_quantity: int = Field(..., ge=0)
 
 

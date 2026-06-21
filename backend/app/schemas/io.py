@@ -8,6 +8,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.common import (
+    ApprovalStatus,
     Classification,
     EvidenceStatus,
     Priority,
@@ -23,7 +24,7 @@ class EventUploadRequest(BaseModel):
     recall_number: str
     product_description: str
     reason_for_recall: str
-    classification: Classification
+    classification: Optional[Classification] = None
     product_ndc: str = Field(
         ...,
         description="Raw FDA NDC format, including hyphens if present.",
@@ -36,7 +37,7 @@ class EventUploadRequest(BaseModel):
 class EventUploadResponse(BaseModel):
     event_id: str
     duplicated: bool
-    ticket_id: Optional[str] = None
+    ticket_id: Optional[str] = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def check_ticket_id_consistency(self) -> "EventUploadResponse":
@@ -64,19 +65,19 @@ class PendingApprovalItem(BaseModel):
 
 class ApproveResponse(BaseModel):
     ticket_id: str
-    approval_status: str = "approved"
+    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
     final_report_version: ReportVersionTag = ReportVersionTag.FINAL_V1
 
 
 class RejectResponse(BaseModel):
     ticket_id: str
-    approval_status: str = "rejected"
+    approval_status: ApprovalStatus = ApprovalStatus.REJECTED
     comment: str
 
 
 class ReviseResponse(BaseModel):
     ticket_id: str
-    approval_status: str = "pending"
+    approval_status: ApprovalStatus = ApprovalStatus.PENDING
     new_version: ReportVersionTag = ReportVersionTag.DRAFT_V2
     safety_check_passed: bool
     blocked_sentences: list[BlockedSentence] = Field(default_factory=list)
@@ -97,7 +98,7 @@ class ReviseResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     user_query: str = Field(..., min_length=1)
-    session_id: Optional[str] = None
+    session_id: Optional[str] = Field(default=None, min_length=1)
 
 
 class ChatResponse(BaseModel):
@@ -115,7 +116,7 @@ class HealthCheckResponse(BaseModel):
 class EvalExpected(BaseModel):
     review_type: ReviewType
     evidence_status: EvidenceStatus
-    blocked_sentences: bool
+    expects_blocked_sentences: bool
     priority: Priority
     urgent: bool
     final_status: TicketStatus
@@ -135,7 +136,8 @@ class EvalResult(BaseModel):
     actual_review_type: ReviewType
     expected_evidence_status: EvidenceStatus
     actual_evidence_status: EvidenceStatus
-    expected_blocked_sentences: bool
-    actual_blocked_sentences: bool
+    expected_has_blocked_sentences: bool
+    actual_has_blocked_sentences: bool
     workflow_steps_completed: int = Field(..., ge=0)
     duration_ms: int = Field(..., ge=0)
+    failure_reason: Optional[str] = None

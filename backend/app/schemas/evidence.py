@@ -28,8 +28,8 @@ class DraftCitation(Citation):
 
 
 class EvidenceRoutingResult(BaseModel):
-    target_document_types: list[DocumentType]
-    target_sections: list[str]
+    target_document_types: list[DocumentType] = Field(..., min_length=1)
+    target_sections: list[str] = Field(..., min_length=1)
 
 
 class EvidenceResult(BaseModel):
@@ -61,7 +61,7 @@ class SufficiencyCheckResult(BaseModel):
 
         if has_missing != self.needs_evidence_review:
             raise ValueError(
-                "needs_evidence_review must match whether missing_sources is empty."
+                "needs_evidence_review must match whether missing_sources is non-empty."
             )
 
         return self

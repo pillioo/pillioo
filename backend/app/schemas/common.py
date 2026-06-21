@@ -15,9 +15,9 @@ class EventType(str, Enum):
 
 
 class Classification(str, Enum):
-    CLASS_I = "Class I"
-    CLASS_II = "Class II"
-    CLASS_III = "Class III"
+    CLASS_I = "class_i"
+    CLASS_II = "class_ii"
+    CLASS_III = "class_iii"
 
 
 class TicketStatus(str, Enum):

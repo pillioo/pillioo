@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.common import Department, MatchType, Priority
 
@@ -15,6 +15,13 @@ class InventoryRow(BaseModel):
     quantity: int = Field(..., ge=0)
     department: Department
     days_remaining: int = Field(..., ge=0)
+
+    @field_validator("ndc")
+    @classmethod
+    def validate_ndc_format(cls, value: str) -> str:
+        if not (value.isdigit() and len(value) == 11):
+            raise ValueError(f"NDC must be an 11-digit number. Received: {value!r}")
+        return value
 
 
 class InventoryMatchResult(BaseModel):
@@ -30,9 +37,12 @@ class InventoryMatchResult(BaseModel):
         if not self.matched and self.matched_rows:
             raise ValueError("matched_rows must be empty when matched is false.")
 
+        if self.matched and not self.matched_rows:
+            raise ValueError("matched_rows must not be empty when matched is true.")
+
         if self.matched and self.match_type == MatchType.NO_MATCH:
             raise ValueError("match_type cannot be no_match when matched is true.")
-        
+
         if not self.matched and self.match_type != MatchType.NO_MATCH:
             raise ValueError("match_type must be no_match when matched is false.")
 

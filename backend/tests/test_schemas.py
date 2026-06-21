@@ -30,10 +30,13 @@ from app.schemas.evidence import (
     Citation,
     DraftCitation,
     EvidenceChunk,
+    EvidenceRoutingResult,
     EvidenceResult,
     SufficiencyCheckResult,
 )
+from app.schemas.io import ChatRequest, EvalResult, EventUploadResponse
 from app.schemas.inventory import ImpactSummary, InventoryMatchResult, InventoryRow, TrustCheckResult
+from app.schemas.review import IdentityIssue, IdentityReviewPayload, TicketSummary
 from app.schemas.workflow import AuditLogEntry, ReviewDecision, TicketState, TrustChecks
 
 
@@ -274,6 +277,15 @@ class TestInventoryMatchResult:
                 match_type=MatchType.NO_MATCH,
                 match_confidence=0.9,
                 matched_rows=[make_inventory_row()],
+            )
+
+    def test_matched_requires_rows(self):
+        with pytest.raises(ValidationError, match="matched_rows must not be empty"):
+            InventoryMatchResult(
+                matched=True,
+                match_type=MatchType.EXACT_NDC_MATCH,
+                match_confidence=0.95,
+                matched_rows=[],
             )
 
     def test_needs_identity_review_requires_reason(self):
@@ -558,3 +570,87 @@ class TestTicketStateWithActionReview:
         )
         assert state.inventory_result.needs_identity_review is True
         assert state.review_type == ReviewType.IDENTITY_REVIEW
+
+
+# API boundary schemas
+
+class TestEventUploadResponse:
+    def test_duplicate_rejects_ticket_id(self):
+        with pytest.raises(ValidationError, match="ticket_id must be empty"):
+            EventUploadResponse(
+                event_id="event_001",
+                duplicated=True,
+                ticket_id="TICKET-001",
+            )
+
+    def test_requires_ticket_id_when_not_duplicated(self):
+        with pytest.raises(ValidationError, match="ticket_id is required"):
+            EventUploadResponse(
+                event_id="event_001",
+                duplicated=False,
+                ticket_id=None,
+            )
+
+    def test_rejects_empty_ticket_id(self):
+        with pytest.raises(ValidationError, match="ticket_id"):
+            EventUploadResponse(
+                event_id="event_001",
+                duplicated=False,
+                ticket_id="",
+            )
+
+
+class TestEvidenceRoutingResult:
+    def test_requires_target_document_types(self):
+        with pytest.raises(ValidationError, match="target_document_types"):
+            EvidenceRoutingResult(
+                target_document_types=[],
+                target_sections=["recall_response"],
+            )
+
+
+class TestChatRequest:
+    def test_rejects_empty_session_id(self):
+        with pytest.raises(ValidationError, match="session_id"):
+            ChatRequest(user_query="What happened?", session_id="")
+
+
+class TestIdentityReviewPayload:
+    def test_rejects_invalid_affected_department(self):
+        with pytest.raises(ValidationError, match="affected_departments"):
+            IdentityReviewPayload(
+                ticket_id="TICKET-001",
+                approval_status=ApprovalStatus.PENDING,
+                summary=TicketSummary(
+                    drug_name="aspirin",
+                    event_type=EventType.RECALL,
+                    classification=Classification.CLASS_I,
+                    priority=Priority.HIGH,
+                ),
+                identity_issue=IdentityIssue(
+                    input_ndc="12345678901",
+                    matched_ndc="12345678902",
+                    match_confidence=0.7,
+                    reason="NDC mismatch.",
+                ),
+                affected_departments=["INVALID"],
+                total_quantity=100,
+            )
+
+
+class TestEvalResult:
+    def test_rejects_negative_duration_ms(self):
+        with pytest.raises(ValidationError, match="duration_ms"):
+            EvalResult(
+                scenario_id="scenario_001",
+                passed=False,
+                expected_review_type=ReviewType.FINAL_APPROVAL,
+                actual_review_type=ReviewType.ACTION_REVIEW,
+                expected_evidence_status=EvidenceStatus.SUFFICIENT,
+                actual_evidence_status=EvidenceStatus.SUFFICIENT,
+                expected_has_blocked_sentences=False,
+                actual_has_blocked_sentences=True,
+                workflow_steps_completed=3,
+                duration_ms=-1,
+                failure_reason="Unexpected action review.",
+            )
