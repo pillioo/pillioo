@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     DB_NAME: str = "pillioo_db"
     DB_USER: str = "user"
     DB_PASSWORD: str
+    DATABASE_URL: str
 
     class Config:
         env_file = ".env"

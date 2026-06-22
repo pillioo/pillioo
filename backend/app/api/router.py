@@ -8,7 +8,7 @@ router = APIRouter()
 async def health_db(db: Session = Depends(get_db)):
     # 간단한 쿼리 예시 (테스트용)
     try:
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {"db": "connected"}
-    except Exception as e:
+    except SQLAlchemyError as e:
         return {"db": "connection_error", "detail": str(e)}

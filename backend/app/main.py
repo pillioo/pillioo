@@ -8,7 +8,7 @@ app = FastAPI(title="P5 Platform MVP", version="0.1.0")
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"], # 추후 프론트엔드 주소로 변경해야 함
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
