@@ -5,6 +5,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - drug recall
   - affected inventory
   - quarantine
@@ -54,6 +55,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - affected lot
   - lot verification
   - recall code_info
@@ -100,6 +102,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - recall notification
   - department communication
   - pharmacist approval
@@ -143,6 +146,7 @@
   priority: LOW
   requires_human_approval: false
   applies_to:
+  - recall
   - no inventory impact
   - no_match
   - recall closure
@@ -184,6 +188,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - drug shortage
   - inventory assessment
   - days of supply
@@ -225,6 +230,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - therapeutic substitution
   - shortage mitigation
   - alternative medication
@@ -266,6 +272,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - shortage allocation
   - limited supply
   - department priority
@@ -306,6 +313,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - shortage
   - department impact
   - shortage summary
   - ICU
@@ -346,6 +354,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - label_update
   - label update
   - warnings
   - contraindications
@@ -387,6 +396,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - label_update
   - warnings
   - boxed warning
   - contraindications
@@ -427,6 +437,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - label_update
   - storage and handling
   - how supplied
   - label update
@@ -466,6 +477,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - high-alert medication
   - warfarin
   - heparin
@@ -507,6 +519,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - safety check
   - blocked category
   - unsafe action
@@ -549,6 +562,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - HITL
   - pharmacist approval
   - final approval
@@ -590,6 +604,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - insufficient evidence
   - missing source
   - coverage score
@@ -631,6 +646,7 @@
   priority: MEDIUM
   requires_human_approval: false
   applies_to:
+  - recall
   - rag_quality_check
   - retrieval quality
   - evidence chunks
@@ -672,6 +688,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - draft report
   - evidence citations
   - impact summary
@@ -712,6 +729,7 @@
   priority: MEDIUM
   requires_human_approval: false
   applies_to:
+  - recall
   - audit log
   - workflow traceability
   - evidence citation
@@ -751,6 +769,7 @@
   priority: MEDIUM
   requires_human_approval: false
   applies_to:
+  - recall
   - evidence routing
   - recall_notice
   - policy retrieval
@@ -792,6 +811,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - inventory match
   - exact_ndc_match
   - fuzzy_name_match

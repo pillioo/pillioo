@@ -5,6 +5,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - Class I recall
   - patient safety risk
   - drug quarantine
@@ -40,6 +41,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - Class II recall
   - temporary health risk
   - reversible adverse event
@@ -71,6 +73,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - affected lot
   - inventory quarantine
   - exact lot match
@@ -102,6 +105,7 @@
   priority: LOW
   requires_human_approval: false
   applies_to:
+  - recall
   - no inventory match
   - recall closure
   - no impact
@@ -133,6 +137,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - high-alert medication
   - warfarin
   - insulin
@@ -166,6 +171,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - drug shortage
   - limited supply
   - allocation
@@ -196,6 +202,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - therapeutic substitution
   - drug shortage
   - alternative medication
@@ -226,6 +233,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - label_update
   - label update
   - warnings
   - contraindications
@@ -257,6 +265,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - label_update
   - boxed warning
   - serious risk
   - label update
@@ -286,6 +295,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - final approval
   - HITL
   - pharmacist review
@@ -315,6 +325,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - unsafe action
   - direct medical instruction
   - substitution recommendation
@@ -345,6 +356,7 @@
   priority: MEDIUM
   requires_human_approval: false
   applies_to:
+  - recall
   - audit log
   - traceability
   - evidence citation
@@ -376,6 +388,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - patient notification
   - recall communication
   - Class I recall
@@ -406,6 +419,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - insufficient evidence
   - missing recall notice
   - missing policy
@@ -437,6 +451,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - inventory discrepancy
   - NDC mismatch
   - lot mismatch
@@ -467,6 +482,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - controlled substance
   - fentanyl
   - morphine
@@ -512,6 +528,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - recall
   - sterile compounding
   - non-sterility
   - contamination
@@ -554,6 +571,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - recall
   - department communication
   - clinical unit notice
   - pharmacy communication
@@ -595,6 +613,7 @@
   priority: HIGH
   requires_human_approval: true
   applies_to:
+  - shortage
   - shortage conservation
   - restricted use
   - allocation control
@@ -635,6 +654,7 @@
   priority: MEDIUM
   requires_human_approval: true
   applies_to:
+  - label_update
   - storage condition
   - handling requirement
   - refrigeration

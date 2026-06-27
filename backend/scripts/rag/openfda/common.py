@@ -51,6 +51,12 @@ def yaml_quote(value: str) -> str:
     return json.dumps(value or "", ensure_ascii=False)
 
 
+def yaml_nullable(value: str | None) -> str:
+    if value is None or not str(value).strip():
+        return "null"
+    return json.dumps(str(value), ensure_ascii=False)
+
+
 def normalize_drug_name(value: str) -> str:
     value = value.lower().strip()
     value = re.sub(r"\s+", " ", value)

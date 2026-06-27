@@ -120,14 +120,55 @@ def get_section_text(record: dict[str, Any], source_fields: list[str]) -> str:
     return "\n\n".join(parts).strip()
 
 
+def is_empty_section_text(text: str) -> bool:
+    normalized = normalize_match_text(text)
+    if not normalized:
+        return True
+
+    section_headings = [
+        canonical.replace("_", " ")
+        for canonical, _source_fields in SECTION_SOURCES
+    ]
+    section_headings.extend(["warnings and cautions", "drug interactions"])
+    for heading in sorted(section_headings, key=len, reverse=True):
+        if normalized.startswith(f"{heading} "):
+            normalized = normalized[len(heading) + 1 :].strip()
+            break
+
+    empty_patterns = [
+        r"^none$",
+        r"^none reported$",
+        r"^not applicable$",
+        r"^no .* (?:available|reported|known)$",
+        r"^.* has not been formally studied$",
+        r"^.* have not been formally studied$",
+        r"^.* has not been established$",
+        r"^.* have not been established$",
+    ]
+    return any(re.fullmatch(pattern, normalized) for pattern in empty_patterns)
+
+
+def get_section_map(record: dict[str, Any]) -> dict[str, str]:
+    return {
+        canonical_section: get_section_text(record, source_fields)
+        for canonical_section, source_fields in SECTION_SOURCES
+    }
+
+
 def get_included_sections(record: dict[str, Any]) -> list[str]:
-    included: list[str] = []
+    return [
+        section
+        for section, text in get_section_map(record).items()
+        if text and not is_empty_section_text(text)
+    ]
 
-    for canonical_section, source_fields in SECTION_SOURCES:
-        if get_section_text(record, source_fields):
-            included.append(canonical_section)
 
-    return included
+def get_empty_sections(record: dict[str, Any]) -> list[str]:
+    return [
+        section
+        for section, text in get_section_map(record).items()
+        if text and is_empty_section_text(text)
+    ]
 
 
 def normalize_match_text(value: str) -> str:
@@ -348,6 +389,7 @@ def label_record_to_markdown(record: dict[str, Any], fallback_name: str) -> str:
 
     document_id = make_document_id(record, fallback_name=fallback_name)
     included_sections = get_included_sections(record)
+    empty_sections = get_empty_sections(record)
 
     lines = [
         "---",
@@ -370,6 +412,7 @@ def label_record_to_markdown(record: dict[str, Any], fallback_name: str) -> str:
         "source: openFDA drug label API",
         f"source_record_id: {yaml_quote(str(record.get('id') or ''))}",
         f"included_sections: {json.dumps(included_sections, ensure_ascii=False)}",
+        f"empty_sections: {json.dumps(empty_sections, ensure_ascii=False)}",
         f"version: {yaml_quote(version)}",
         "---",
         "",
@@ -387,7 +430,7 @@ def label_record_to_markdown(record: dict[str, Any], fallback_name: str) -> str:
 
     for canonical_section, source_fields in SECTION_SOURCES:
         text = get_section_text(record, source_fields)
-        if not text:
+        if not text or is_empty_section_text(text):
             continue
 
         lines.extend([f"## {canonical_section}", text, ""])

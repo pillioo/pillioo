@@ -8,6 +8,7 @@ from scripts.rag.openfda.common import (
     normalize_date_yyyymmdd,
     normalize_drug_name,
     slugify,
+    yaml_nullable,
     yaml_quote,
 )
 
@@ -76,7 +77,7 @@ def extract_ndc(text: str) -> str:
 
 
 def extract_lots(text: str) -> list[str]:
-    if re.search(r"\ball\s+lots\b", text, flags=re.IGNORECASE):
+    if re.search(r"\ball\s+(?:lot\s+codes|lots?|codes?)\b", text, flags=re.IGNORECASE):
         return ["all_lots"]
 
     candidates: list[str] = []
@@ -370,9 +371,17 @@ def recall_record_to_markdown(
 
     combined_text = f"{product_description}\n{code_info}\n{more_code_info}"
     ndc = extract_ndc(combined_text)
-    lots = extract_lots(combined_text)
-    lot = ", ".join(lots)
-    lot_scope = "all_lots" if lots == ["all_lots"] else ("specific_lots" if lots else "unknown")
+    lot_source_text = "\n".join(part for part in [code_info, more_code_info] if part)
+    lots = extract_lots(lot_source_text)
+    if lots == ["all_lots"]:
+        lot = None
+        lot_scope = "all_lots"
+    elif lots:
+        lot = ", ".join(lots)
+        lot_scope = "specific_lots"
+    else:
+        lot = None
+        lot_scope = "unknown"
     reason_category = infer_reason_category(reason_for_recall)
 
     recall_initiation_date_iso = normalize_date_yyyymmdd(recall_initiation_date)
@@ -408,8 +417,8 @@ def recall_record_to_markdown(
         f"termination_date_iso: {yaml_quote(termination_date_iso)}",
         f"report_date: {yaml_quote(report_date)}",
         f"report_date_iso: {yaml_quote(report_date_iso)}",
-        f"ndc: {yaml_quote(ndc)}",
-        f"lot: {yaml_quote(lot)}",
+        f"ndc: {yaml_nullable(ndc)}",
+        f"lot: {yaml_nullable(lot)}",
         f"lot_scope: {yaml_quote(lot_scope)}",
         "source: openFDA drug enforcement API",
         f"source_record_id: {yaml_quote(event_id)}",
