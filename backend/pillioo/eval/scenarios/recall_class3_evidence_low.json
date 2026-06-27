@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_class3_evidence_low",
+  "description": "Class III recall, 근거 문서 부족 → evidence_review",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "methotrexate",
+    "ndc": "00078059615",
+    "lot": "LOT-C",
+    "classification": "Class III",
+    "reason_for_recall": "Labeling error"
+  },
+  "expected": {
+    "review_type": "evidence_review",
+    "evidence_status": "insufficient",
+    "blocked_sentences": false,
+    "priority": "MEDIUM",
+    "urgent": false,
+    "final_status": "REVIEW_ROUTED"
+  }
+}
