@@ -1,0 +1,104 @@
+label:
+  sedation_anesthesia_analgesics:
+    - midazolam
+    - propofol
+    - fentanyl
+    - morphine sulfate
+    - hydromorphone
+    - ketamine
+    - dexmedetomidine
+    - bupivacaine hydrochloride
+    - lidocaine
+  vasopressors_emergency:
+    - epinephrine
+    - norepinephrine
+    - phenylephrine
+    - dopamine
+    - dobutamine
+    - naloxone
+  antibiotics:
+    - vancomycin
+    - ceftriaxone
+    - cefazolin
+    - piperacillin and tazobactam
+    - meropenem
+  anticoagulants_cardiovascular:
+    - heparin sodium
+    - enoxaparin sodium
+    - warfarin sodium
+    - alteplase
+    - amiodarone
+    - nitroglycerin
+  endocrine_metabolic:
+    - insulin regular human
+    - insulin glargine
+    - potassium chloride
+    - magnesium sulfate
+    - dextrose
+    - sodium chloride
+  antiemetic_gi_pain:
+    - ondansetron
+    - metoclopramide
+    - pantoprazole
+    - ketorolac
+    - acetaminophen
+  steroids_oncology:
+    - dexamethasone
+    - methylprednisolone
+    - methotrexate
+    - cisplatin
+recall:
+  sedation_anesthesia_analgesics:
+    - midazolam
+    - propofol
+    - fentanyl
+    - morphine sulfate
+    - hydromorphone
+    - ketamine
+    - dexmedetomidine
+    - bupivacaine
+    - lidocaine
+  vasopressors_emergency:
+    - epinephrine
+    - norepinephrine
+    - phenylephrine
+    - dopamine
+    - dobutamine
+    - naloxone
+  antibiotics:
+    - vancomycin
+    - ceftriaxone
+    - cefazolin
+    - piperacillin
+    - tazobactam
+    - meropenem
+    - azithromycin
+    - ciprofloxacin
+    - metronidazole
+  anticoagulants_cardiovascular:
+    - heparin
+    - heparin sodium
+    - enoxaparin
+    - warfarin
+    - alteplase
+    - amiodarone
+    - nitroglycerin
+  endocrine_metabolic:
+    - insulin
+    - insulin regular human
+    - insulin glargine
+    - potassium chloride
+    - magnesium sulfate
+    - dextrose
+    - sodium chloride
+  antiemetic_gi_pain:
+    - ondansetron
+    - metoclopramide
+    - pantoprazole
+    - ketorolac
+    - acetaminophen
+  steroids_oncology:
+    - dexamethasone
+    - methylprednisolone
+    - methotrexate
+    - cisplatin

@@ -1,0 +1,710 @@
+- document_id: policy-class-i-recall-response
+  policy_id: POL-RECALL-001
+  title: Class I Recall Response Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - Class I recall
+  - patient safety risk
+  - drug quarantine
+  - urgent pharmacist review
+  purpose: "\n        This policy defines the required response for Class I drug recall events\n        where use of the affected product may cause serious adverse health\n        consequences or death.\n        "
+  scope: "\n        This policy applies to all pharmacy, nursing, inventory, and clinical\n        operations teams that handle recalled drug products in inpatient,\n        outpatient, emergency, operating room, and intensive care settings.\n        "
+  policy_statement: "\n        Class I recall events must be treated as high-priority safety events.\n        The system may assist with evidence retrieval, inventory matching,\n        impact summaries, and draft response preparation, but final operational\n        decisions must be reviewed and approved by a licensed pharmacist or\n        authorized medication safety officer.\n        "
+  required_actions:
+  - Verify the recall number, classification, affected product, NDC, lot number, and expiration information.
+  - Match the affected product against active inventory records using NDC, lot number, and normalized drug name.
+  - Quarantine matching inventory before any continued distribution or administration.
+  - Route the case to pharmacist review before sending final instructions to clinical units.
+  - Record all evidence sources, inventory findings, reviewer decisions, and timestamps in the audit log.
+  escalation_criteria:
+  - The recall classification is Class I.
+  - The affected product appears in active inventory.
+  - NDC or lot information is missing, ambiguous, or partially matched.
+  - The product is a high-alert medication or used in emergency care areas.
+  - The generated recommendation includes quarantine, substitution, disposal, or patient notification.
+  approval_requirements:
+  - Pharmacist final approval is required before any recall response is marked complete.
+  - Medication disposal instructions must not be finalized without human approval.
+  - Therapeutic substitution guidance must be reviewed by a pharmacist before communication to clinical staff.
+  audit_requirements:
+  - Recall notice source path must be retained.
+  - Inventory match result must be retained.
+  - Human reviewer identity and decision timestamp must be retained.
+  - Draft and final report versions must be retained.
+- document_id: policy-class-ii-recall-response
+  policy_id: POL-RECALL-002
+  title: Class II Recall Response Policy
+  event_type: recall
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - Class II recall
+  - temporary health risk
+  - reversible adverse event
+  - inventory review
+  purpose: "\n        This policy defines the response process for Class II drug recall events,\n        where use of the affected product may cause temporary or medically\n        reversible adverse health consequences.\n        "
+  scope: "\n        This policy applies to pharmacy inventory, medication safety, and\n        departmental medication storage areas that may hold affected products.\n        "
+  policy_statement: "\n        Class II recall events require evidence-based inventory review and\n        documented pharmacist assessment. Automated systems may prioritize\n        affected inventory and draft response summaries, but should not close\n        a case with confirmed impact without human review.\n        "
+  required_actions:
+  - Confirm the recall classification and recall number from the source notice.
+  - Search inventory for exact NDC and lot matches before relying on fuzzy drug-name matches.
+  - Flag partial matches for evidence review.
+  - Prepare a draft impact summary that separates confirmed matches from possible matches.
+  - Route cases with confirmed inventory impact to pharmacist review.
+  escalation_criteria:
+  - Inventory contains exact NDC or lot match.
+  - Recall notice has incomplete product identifiers.
+  - The affected product is used in ICU, ER, OR, or high-risk medication workflows.
+  - The draft response contains operational instructions.
+  approval_requirements:
+  - Pharmacist review is required for confirmed inventory impact.
+  - Evidence review is required when only fuzzy matches are available.
+  audit_requirements:
+  - Recall source, matched inventory items, and match type must be logged.
+  - Reviewer notes must distinguish confirmed and uncertain impact.
+- document_id: policy-affected-lot-quarantine
+  policy_id: POL-RECALL-003
+  title: Affected Lot Quarantine Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - affected lot
+  - inventory quarantine
+  - exact lot match
+  - drug recall
+  purpose: "\n        This policy defines when and how inventory associated with an affected\n        lot should be quarantined during a recall investigation.\n        "
+  scope: "\n        This policy applies to medication stock stored in central pharmacy,\n        automated dispensing cabinets, satellite pharmacies, procedural areas,\n        and emergency medication kits.\n        "
+  policy_statement: "\n        Inventory with an exact affected lot match must be treated as impacted\n        until reviewed by pharmacy leadership. The system may identify matching\n        inventory and prepare a quarantine recommendation, but the final\n        quarantine action must be confirmed by an authorized reviewer.\n        "
+  required_actions:
+  - Compare recall code information against inventory lot fields.
+  - If lot information is listed as all lots, treat all matching NDC or product-name inventory as potentially affected.
+  - Separate confirmed lot matches from possible product-name matches.
+  - Generate a quarantine candidate list for pharmacist review.
+  - Do not mark quarantine complete until reviewer approval is recorded.
+  escalation_criteria:
+  - The recall notice states all lots.
+  - The affected lot is missing from inventory metadata.
+  - There is a mismatch between NDC and product description.
+  - The product is currently stocked in patient care areas.
+  approval_requirements:
+  - Human approval is required before inventory is marked quarantined.
+  - A second review is recommended when lot data is incomplete or inconsistent.
+  audit_requirements:
+  - Affected lot values, matching rules, and reviewer decision must be retained.
+  - All quarantine candidates must include source recall reference.
+- document_id: policy-no-inventory-impact-close
+  policy_id: POL-RECALL-004
+  title: No Inventory Impact Closure Policy
+  event_type: recall
+  priority: LOW
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - no inventory match
+  - recall closure
+  - no impact
+  - exact NDC mismatch
+  purpose: "\n        This policy defines when a recall ticket may be closed as no inventory\n        impact after evidence retrieval and inventory matching.\n        "
+  scope: "\n        This policy applies to recall events where the affected product was not\n        found in local inventory after exact and fuzzy matching checks.\n        "
+  policy_statement: "\n        A recall ticket may be routed for no-impact closure only when required\n        recall evidence is present and inventory matching shows no exact NDC,\n        lot, or high-confidence name match. The closure summary must preserve\n        the evidence used to support the no-impact decision.\n        "
+  required_actions:
+  - Confirm that recall notice evidence was retrieved.
+  - Run exact NDC matching before fuzzy drug-name matching.
+  - Confirm that no active inventory item matches the affected product.
+  - Generate a no-impact closure summary with source citations.
+  - Record the closure decision in the audit log.
+  escalation_criteria:
+  - Recall evidence is missing or incomplete.
+  - Only fuzzy matching was performed.
+  - A possible match exists in a high-risk department.
+  - The affected product description is ambiguous.
+  approval_requirements:
+  - Human approval is not required for no-impact closure when evidence is sufficient and no inventory match exists.
+  - Evidence review is required if recall notice or inventory data is incomplete.
+  audit_requirements:
+  - Inventory query results and evidence citations must be retained.
+  - The closure reason must state why no inventory impact was found.
+- document_id: policy-high-alert-medication-review
+  policy_id: POL-SAFETY-001
+  title: High-Alert Medication Review Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - high-alert medication
+  - warfarin
+  - insulin
+  - heparin
+  - magnesium sulfate
+  - potassium chloride
+  purpose: "\n        This policy defines additional review requirements for medication events\n        involving high-alert medications.\n        "
+  scope: "\n        This policy applies to recall, shortage, and label update events\n        involving medications that may cause significant patient harm when used\n        in error.\n        "
+  policy_statement: "\n        High-alert medication events require conservative handling. Automated\n        recommendations must avoid direct dosing, substitution, disposal, or\n        patient-care instructions unless reviewed by an authorized pharmacist.\n        "
+  required_actions:
+  - Identify whether the affected drug is high-alert.
+  - Retrieve label warnings, recall notices, policy documents, and SOP evidence when available.
+  - Route uncertain or high-impact cases to pharmacist review.
+  - Block direct medical instructions in generated drafts.
+  - Include explicit evidence citations in any summary.
+  escalation_criteria:
+  - The affected drug is warfarin, insulin, heparin, magnesium sulfate, or potassium chloride.
+  - The event involves pediatric, ICU, ER, or OR inventory.
+  - The recommendation would change clinical medication use.
+  - The evidence set is incomplete.
+  approval_requirements:
+  - Final approval is required for high-alert medication actions.
+  - Substitution and disposal recommendations require pharmacist approval.
+  audit_requirements:
+  - High-alert classification rationale must be logged.
+  - Blocked unsafe action categories must be retained.
+- document_id: policy-drug-shortage-allocation
+  policy_id: POL-SHORTAGE-001
+  title: Drug Shortage Allocation Policy
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - drug shortage
+  - limited supply
+  - allocation
+  - critical medication
+  purpose: "\n        This policy defines how limited medication supply should be prioritized\n        during a shortage event.\n        "
+  scope: "\n        This policy applies to active or anticipated drug shortages affecting\n        emergency care, critical care, perioperative services, oncology,\n        infectious disease treatment, and other essential medication workflows.\n        "
+  policy_statement: "\n        Shortage allocation must prioritize patient safety, clinical urgency,\n        and continuity of essential therapy. Automated systems may estimate\n        inventory risk and draft allocation summaries, but final allocation\n        decisions require pharmacist or medication safety approval.\n        "
+  required_actions:
+  - Identify the affected drug, severity, expected duration, and available inventory.
+  - Estimate days of supply using current usage and on-hand stock.
+  - Prioritize emergency, ICU, OR, and other critical-use departments when clinically appropriate.
+  - Retrieve shortage notice, label, policy, and SOP evidence.
+  - Prepare a mitigation summary for pharmacist review.
+  escalation_criteria:
+  - Severity is high or critical.
+  - Days of supply are below the institutional threshold.
+  - The affected drug has no readily available alternative.
+  - The shortage affects high-risk departments.
+  approval_requirements:
+  - Allocation changes require pharmacist approval.
+  - Clinical substitution recommendations require human review.
+  audit_requirements:
+  - Inventory assumptions, usage estimates, and approval decisions must be retained.
+- document_id: policy-therapeutic-substitution-approval
+  policy_id: POL-SHORTAGE-002
+  title: Therapeutic Substitution Approval Policy
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - therapeutic substitution
+  - drug shortage
+  - alternative medication
+  - pharmacist approval
+  purpose: "\n        This policy defines approval requirements for therapeutic substitution\n        recommendations during shortage or recall events.\n        "
+  scope: "\n        This policy applies when a draft response proposes an alternative drug,\n        route, strength, or formulation because the original product is recalled,\n        unavailable, or constrained.\n        "
+  policy_statement: "\n        The system must not independently approve therapeutic substitutions.\n        It may identify that substitution review is required, retrieve relevant\n        evidence, and prepare a draft checklist, but the substitution decision\n        must remain under pharmacist control.\n        "
+  required_actions:
+  - Identify whether the proposed response includes substitution language.
+  - Retrieve label evidence for the affected medication when available.
+  - Retrieve shortage or recall evidence that justifies review.
+  - Route the case to action review before final approval.
+  - Remove or soften unsupported substitution claims in generated drafts.
+  escalation_criteria:
+  - The generated draft names a substitute medication.
+  - The substitute differs by route, formulation, or concentration.
+  - The affected drug is high-alert.
+  - The evidence does not contain an approved substitution protocol.
+  approval_requirements:
+  - Pharmacist approval is required for any substitution recommendation.
+  - Final communication must not imply automatic substitution without approval.
+  audit_requirements:
+  - Substitution trigger, evidence sources, and reviewer decision must be logged.
+- document_id: policy-label-update-review
+  policy_id: POL-LABEL-001
+  title: Label Update Review Policy
+  event_type: label_update
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - label update
+  - warnings
+  - contraindications
+  - dosage change
+  - clinical review
+  purpose: "\n        This policy defines how medication label updates should be reviewed for\n        operational and clinical impact.\n        "
+  scope: "\n        This policy applies to label changes involving boxed warnings,\n        contraindications, dosage and administration, adverse reactions, drug\n        interactions, storage, or patient counseling information.\n        "
+  policy_statement: "\n        Label updates must be reviewed when they may affect medication handling,\n        prescribing, administration, storage, or patient safety. The system may\n        summarize changed label sections and identify relevant departments, but\n        clinical interpretation requires human review.\n        "
+  required_actions:
+  - Retrieve the current label document and relevant label sections.
+  - Prioritize warnings, contraindications, dosage, adverse reactions, drug interactions, and storage sections.
+  - Identify whether the update affects high-risk departments or high-alert medications.
+  - Generate a draft operational impact summary.
+  - Route clinically significant updates to pharmacist review.
+  escalation_criteria:
+  - The label contains a boxed warning.
+  - Contraindications or dosage instructions changed.
+  - The update affects high-alert medication handling.
+  - The system cannot retrieve sufficient label evidence.
+  approval_requirements:
+  - Clinical impact summaries require pharmacist review.
+  - Department-facing instructions require final approval.
+  audit_requirements:
+  - Label source, effective time, and sections used in the summary must be retained.
+- document_id: policy-boxed-warning-escalation
+  policy_id: POL-LABEL-002
+  title: Boxed Warning Escalation Policy
+  event_type: label_update
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - boxed warning
+  - serious risk
+  - label update
+  - patient safety escalation
+  purpose: "\n        This policy defines escalation requirements for label updates involving\n        boxed warnings or comparable serious safety language.\n        "
+  scope: "\n        This policy applies to medication labels that contain boxed warning\n        sections or warning language indicating serious risk, life-threatening\n        harm, or restricted use.\n        "
+  policy_statement: "\n        Boxed warning updates must be treated as high-priority label events.\n        The system may retrieve and summarize the warning, but it must not issue\n        clinical practice instructions without pharmacist or medication safety\n        approval.\n        "
+  required_actions:
+  - Retrieve boxed warning and warnings sections when present.
+  - Identify affected medication, route, population, and department relevance.
+  - Flag the ticket as requiring pharmacist review.
+  - Generate a draft summary that cites the label section.
+  - Avoid unsupported interpretation beyond the label text.
+  escalation_criteria:
+  - A boxed warning section is present.
+  - The warning references life-threatening adverse events.
+  - The warning affects pediatric, ICU, ER, OR, oncology, or high-alert medication workflows.
+  - The evidence set is incomplete or conflicting.
+  approval_requirements:
+  - Pharmacist final approval is required before distributing boxed warning impact summaries.
+  audit_requirements:
+  - The exact label section, source path, and reviewer decision must be retained.
+- document_id: policy-pharmacist-final-approval
+  policy_id: POL-HITL-001
+  title: Pharmacist Final Approval Policy
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  template_profile: common
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - final approval
+  - HITL
+  - pharmacist review
+  - safety-critical action
+  purpose: "\n        This policy defines when pharmacist final approval is required before a\n        ticket may be closed or an operational response may be communicated.\n        "
+  scope: "\n        This policy applies to recall, shortage, and label update tickets that\n        include safety-critical actions, uncertain evidence, or active inventory\n        impact.\n        "
+  policy_statement: "\n        The system may prepare drafts and evidence summaries, but it must route\n        safety-critical decisions to human review. Final approval must be\n        recorded before completing actions that affect inventory, medication\n        distribution, substitution, disposal, or patient-facing communication.\n        "
+  required_actions:
+  - Detect whether the draft contains safety-critical operational actions.
+  - Check whether evidence sufficiency is marked sufficient.
+  - Route the ticket to final approval when inventory impact or high-risk action exists.
+  - Record the reviewer decision before marking the ticket approved.
+  escalation_criteria:
+  - Confirmed inventory impact exists.
+  - The draft recommends quarantine, substitution, disposal, or notification.
+  - Evidence is insufficient.
+  - The affected drug is high-alert or used in critical care.
+  approval_requirements:
+  - Final approval is required for safety-critical actions.
+  - Rejection or revision must return the ticket to draft or evidence review.
+  audit_requirements:
+  - Approval status, reviewer identity, timestamp, and report version must be retained.
+- document_id: policy-unsafe-action-blocking
+  policy_id: POL-SAFETY-002
+  title: Unsafe Action Blocking Policy
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  template_profile: common
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - unsafe action
+  - direct medical instruction
+  - substitution recommendation
+  - disposal instruction
+  - certainty without approval
+  purpose: "\n        This policy defines categories of generated content that must be blocked\n        or routed to human review before use.\n        "
+  scope: "\n        This policy applies to generated drafts, summaries, checklists, and\n        recommendations produced during recall, shortage, and label update\n        workflows.\n        "
+  policy_statement: "\n        Generated content must not provide direct medical instructions,\n        unsupported substitution recommendations, disposal instructions, or\n        certainty claims without appropriate approval. Such content should be\n        blocked, softened, or routed to action review.\n        "
+  required_actions:
+  - Scan generated drafts for blocked action categories.
+  - Replace direct instructions with review-required language when appropriate.
+  - Route unsafe action findings to action review.
+  - Require final approval before releasing corrected operational instructions.
+  escalation_criteria:
+  - The draft includes direct medical instruction.
+  - The draft recommends substitution without policy evidence.
+  - The draft recommends disposal without approval.
+  - The draft states certainty despite missing evidence.
+  approval_requirements:
+  - Action review is required when blocked categories are detected.
+  - Final approval is required before corrected safety-critical instructions are released.
+  audit_requirements:
+  - Blocked category, original sentence, corrected sentence, and reviewer decision must be retained.
+- document_id: policy-audit-trail-requirements
+  policy_id: POL-AUDIT-001
+  title: Audit Trail Requirements Policy
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  template_profile: common
+  priority: MEDIUM
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - audit log
+  - traceability
+  - evidence citation
+  - workflow state
+  purpose: "\n        This policy defines minimum audit trail requirements for evidence-driven\n        medication operations workflows.\n        "
+  scope: "\n        This policy applies to all recall, shortage, and label update tickets\n        processed by the workflow system.\n        "
+  policy_statement: "\n        Every ticket must retain enough information to reconstruct why the\n        system made a routing, sufficiency, safety, or approval decision.\n        Evidence sources, retrieval results, draft versions, and human decisions\n        must be traceable.\n        "
+  required_actions:
+  - Record workflow step transitions.
+  - Retain evidence chunk citations and source paths.
+  - Record inventory match type and impact assessment.
+  - Retain draft report versions and safety check results.
+  - Record human review decisions and timestamps.
+  escalation_criteria:
+  - A ticket lacks evidence citations.
+  - A safety check result is missing.
+  - A human approval decision is required but absent.
+  - A report was changed after approval.
+  approval_requirements:
+  - Audit policy itself does not require approval for every log entry.
+  - Tickets with missing required audit fields must not be marked final.
+  audit_requirements:
+  - All required audit events must include timestamp, workflow step, and structured payload.
+  - Evidence citations must include source path and section.
+- document_id: policy-patient-notification-threshold
+  policy_id: POL-COMM-001
+  title: Patient Notification Threshold Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - patient notification
+  - recall communication
+  - Class I recall
+  - dispensed medication
+  purpose: "\n        This policy defines when patient notification should be considered\n        during medication recall workflows.\n        "
+  scope: "\n        This policy applies when recalled medication may have been dispensed,\n        administered, or distributed to patient care areas.\n        "
+  policy_statement: "\n        Patient notification is a regulated and safety-sensitive action.\n        The system may identify that patient notification review may be needed,\n        but it must not generate final patient-facing instructions without\n        authorized human approval.\n        "
+  required_actions:
+  - Identify whether affected medication was dispensed or administered.
+  - Retrieve recall classification and reason for recall.
+  - Flag Class I recalls for communication review.
+  - Prepare an internal draft summary for pharmacist and compliance review.
+  - Do not send patient-facing language automatically.
+  escalation_criteria:
+  - The recall is Class I.
+  - Affected inventory was dispensed or administered.
+  - The recall reason indicates serious patient safety risk.
+  - Patient-facing communication is proposed.
+  approval_requirements:
+  - Patient notification requires pharmacist and compliance approval.
+  - Patient-facing text must be reviewed before release.
+  audit_requirements:
+  - Communication review decision and approved final text must be retained.
+- document_id: policy-evidence-insufficiency-escalation
+  policy_id: POL-EVIDENCE-001
+  title: Evidence Insufficiency Escalation Policy
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  template_profile: common
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - insufficient evidence
+  - missing recall notice
+  - missing policy
+  - manual review
+  purpose: "\n        This policy defines how the system should behave when required evidence\n        sources are missing or insufficient.\n        "
+  scope: "\n        This policy applies to evidence retrieval for recall, shortage, and\n        label update workflows.\n        "
+  policy_statement: "\n        The system must not infer missing evidence as fact. If required evidence\n        is missing, the case should be routed to evidence review rather than\n        generating a confident operational conclusion.\n        "
+  required_actions:
+  - Compare required evidence sources against retrieved evidence sources.
+  - Mark evidence status as insufficient when required sources are missing.
+  - Generate a cautious summary that explicitly states missing evidence.
+  - Route the ticket to evidence review.
+  - Avoid unsupported claims about recall impact, shortage severity, or label changes.
+  escalation_criteria:
+  - Required recall notice is missing.
+  - Required policy or SOP is missing.
+  - Retrieved evidence has low similarity or conflicting content.
+  - The draft contains certainty despite missing evidence.
+  approval_requirements:
+  - Evidence review is required when evidence is insufficient.
+  - Final approval must not occur until required evidence gaps are resolved or explicitly accepted.
+  audit_requirements:
+  - Missing source types and coverage score must be retained.
+  - Evidence review outcome must be logged.
+- document_id: policy-inventory-discrepancy-review
+  policy_id: POL-INVENTORY-001
+  title: Inventory Discrepancy Review Policy
+  event_type: recall
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - inventory discrepancy
+  - NDC mismatch
+  - lot mismatch
+  - fuzzy name match
+  purpose: "\n        This policy defines review requirements when inventory matching produces\n        uncertain, conflicting, or incomplete results.\n        "
+  scope: "\n        This policy applies to inventory matching during recall and shortage\n        workflows, especially when product identifiers are incomplete.\n        "
+  policy_statement: "\n        Exact NDC and lot matches should be prioritized over fuzzy name matches.\n        When inventory data is incomplete or conflicting, the system should\n        route the case to identity or evidence review instead of closing or\n        approving the ticket automatically.\n        "
+  required_actions:
+  - Perform exact NDC matching when NDC is available.
+  - Perform lot matching when lot information is available.
+  - Use fuzzy name matching only as a secondary signal.
+  - Flag conflicting NDC, lot, or product description results.
+  - Route uncertain matches to identity review.
+  escalation_criteria:
+  - Fuzzy name match exists without exact NDC match.
+  - NDC is missing from recall notice or inventory.
+  - Lot data is missing, malformed, or listed as all lots.
+  - The affected product is stocked in critical care areas.
+  approval_requirements:
+  - Identity review is required for uncertain inventory matches.
+  - Confirmed impact decisions require pharmacist approval when the action is safety-critical.
+  audit_requirements:
+  - Match type, match confidence, inventory item, and evidence source must be retained.
+- document_id: policy-controlled-substance-review
+  policy_id: POL-SAFETY-003
+  title: Controlled Substance Review Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - controlled substance
+  - fentanyl
+  - morphine
+  - hydromorphone
+  - ketamine
+  - diversion risk
+  purpose: |
+    This policy defines additional review requirements for recall, label, or
+    inventory events involving controlled substances or medications with
+    diversion risk.
+  scope: |
+    This policy applies to pharmacy inventory, automated dispensing cabinets,
+    procedural areas, emergency departments, operating rooms, and any workflow
+    where affected controlled substances may be stored, wasted, returned, or
+    redistributed.
+  policy_statement: |
+    Controlled substance events require stricter identity, chain-of-custody,
+    and reviewer controls. Automated systems may identify potentially affected
+    inventory and prepare evidence summaries, but they must not finalize
+    wasting, return, substitution, or redistribution instructions without
+    authorized pharmacist review.
+  required_actions:
+  - Identify whether the affected medication is controlled or diversion-sensitive.
+  - Verify NDC, lot, strength, dosage form, storage location, and quantity on hand.
+  - Preserve chain-of-custody evidence for affected inventory and any proposed transfer.
+  - Route confirmed or possible impact to pharmacist review.
+  - Avoid final disposal, wasting, or return instructions until approval is recorded.
+  escalation_criteria:
+  - The affected drug is fentanyl, morphine, hydromorphone, ketamine, or another controlled substance.
+  - Inventory impact exists in ADC, OR, ER, ICU, or procedural locations.
+  - Quantity on hand, waste record, or location data is missing or inconsistent.
+  - The generated draft contains disposal, return, wasting, or redistribution language.
+  approval_requirements:
+  - Pharmacist approval is required before controlled substance actions are marked complete.
+  - A second reviewer is recommended when chain-of-custody evidence is incomplete.
+  audit_requirements:
+  - Controlled substance status, inventory location, quantity, reviewer identity, and approval timestamp must be retained.
+  - Any blocked disposal, return, or wasting language must be retained with the draft version.
+- document_id: policy-sterile-compounding-event-review
+  policy_id: POL-COMPOUNDING-001
+  title: Sterile Compounding Event Review Policy
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - sterile compounding
+  - non-sterility
+  - contamination
+  - compounded drug
+  - IV preparation
+  purpose: |
+    This policy defines review requirements for events involving sterile
+    compounded preparations, contamination, non-sterility, or preparation
+    defects.
+  scope: |
+    This policy applies to compounded sterile preparations, IV admixtures,
+    pharmacy-prepared syringes, patient-specific batches, and outsourced
+    sterile products used in inpatient or procedural care settings.
+  policy_statement: |
+    Sterile compounding events must be handled conservatively because affected
+    products may have patient safety, sterility, and batch traceability impact.
+    The system may gather evidence and identify affected preparations, but
+    pharmacist and compounding leadership review is required before final
+    quarantine or communication actions.
+  required_actions:
+  - Identify whether the product is compounded, sterile, patient-specific, or batch-prepared.
+  - Retrieve recall reason, preparation description, lot or batch identifiers, and distribution information.
+  - Match affected preparations against local compounding, inventory, and dispensing records when available.
+  - Route contamination, non-sterility, or particulate events to pharmacist review.
+  - Separate confirmed affected preparations from possible matches in draft summaries.
+  escalation_criteria:
+  - The recall reason includes non-sterility, contamination, microbial growth, or particulate matter.
+  - The affected product is an IV admixture, syringe, infusion bag, or compounded sterile preparation.
+  - Batch, lot, preparation date, or distribution information is missing.
+  - A patient-specific preparation may have been dispensed or administered.
+  approval_requirements:
+  - Pharmacist or compounding leadership approval is required before final actions.
+  - Patient exposure assessment requires human review before communication language is released.
+  audit_requirements:
+  - Preparation identifiers, match rationale, evidence sources, reviewer decision, and final action status must be retained.
+- document_id: policy-clinical-department-communication
+  policy_id: POL-COMM-002
+  title: Clinical Department Communication Policy
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  template_profile: common
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - department communication
+  - clinical unit notice
+  - pharmacy communication
+  - recall update
+  - shortage update
+  purpose: |
+    This policy defines when operational updates may be communicated to clinical
+    departments during recall, shortage, or label update workflows.
+  scope: |
+    This policy applies to pharmacy-to-department communication for nursing
+    units, ICU, ER, OR, oncology, procedural areas, satellite pharmacies, and
+    other medication handling locations.
+  policy_statement: |
+    Department-facing communication must be evidence-based, internally
+    consistent, and approved when it contains safety-critical actions. The
+    system may draft internal messages, but it must not release instructions
+    that change medication handling, substitution, quarantine, or patient
+    notification without required approval.
+  required_actions:
+  - Identify the intended audience and departments affected by the event.
+  - Include evidence citations or source identifiers in internal drafts.
+  - Separate confirmed actions from pending review items.
+  - Route safety-critical communication to final approval before release.
+  - Retain draft and approved message versions.
+  escalation_criteria:
+  - The message instructs a department to quarantine, remove, substitute, conserve, or notify.
+  - The affected department is ICU, ER, OR, oncology, pediatrics, or a procedural area.
+  - Evidence is incomplete or the impact assessment is uncertain.
+  - The communication is patient-facing or could be forwarded externally.
+  approval_requirements:
+  - Pharmacist approval is required for safety-critical department communication.
+  - Compliance review is required before patient-facing or externally distributable text is released.
+  audit_requirements:
+  - Audience, message version, source evidence, approval status, and release timestamp must be retained.
+- document_id: policy-shortage-conservation-controls
+  policy_id: POL-SHORTAGE-003
+  title: Shortage Conservation Controls Policy
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - shortage conservation
+  - restricted use
+  - allocation control
+  - days of supply
+  - critical medication
+  purpose: |
+    This policy defines controls for conservation, restriction, and allocation
+    recommendations during medication shortages.
+  scope: |
+    This policy applies when a shortage may require prioritization, restricted
+    use, ordering controls, therapeutic alternatives, or department-level
+    allocation decisions.
+  policy_statement: |
+    Conservation recommendations must be based on shortage evidence, inventory
+    status, and clinical priority. The system may estimate risk and identify
+    review triggers, but it must not finalize restrictions or allocation changes
+    without pharmacist approval.
+  required_actions:
+  - Retrieve shortage evidence, available inventory, expected replenishment, and usage assumptions.
+  - Estimate days of supply and identify high-risk departments.
+  - Flag proposed conservation, restriction, or allocation language for review.
+  - Identify whether alternatives or substitutions require separate approval.
+  - Preserve assumptions used for usage and inventory risk estimates.
+  escalation_criteria:
+  - Days of supply are below the institutional threshold.
+  - The shortage affects emergency, ICU, OR, oncology, pediatric, or high-alert workflows.
+  - The draft recommends restricting use, reserving stock, or changing access by department.
+  - Alternative therapy is mentioned without supporting policy or SOP evidence.
+  approval_requirements:
+  - Pharmacist approval is required for conservation or allocation changes.
+  - Therapeutic substitution requires separate pharmacist review.
+  audit_requirements:
+  - Inventory assumptions, days-of-supply calculation, affected departments, and reviewer decision must be retained.
+- document_id: policy-storage-and-handling-label-change
+  policy_id: POL-LABEL-003
+  title: Storage and Handling Label Change Policy
+  event_type: label_update
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - storage condition
+  - handling requirement
+  - refrigeration
+  - beyond-use handling
+  - label update
+  purpose: |
+    This policy defines review requirements for label updates that affect
+    storage, handling, preparation, or stability information.
+  scope: |
+    This policy applies to medication label updates involving refrigeration,
+    room-temperature storage, light protection, dilution, compatibility,
+    preparation, stability, or handling requirements.
+  policy_statement: |
+    Storage and handling changes may affect inventory safety and department
+    workflows. The system may summarize changed label sections and identify
+    affected locations, but operational changes must be reviewed before
+    department communication or inventory action.
+  required_actions:
+  - Retrieve storage_and_handling, how_supplied, dosage_and_administration, and preparation sections when available.
+  - Identify whether storage conditions, preparation steps, or stability language changed.
+  - Flag affected inventory locations and departments for review.
+  - Draft an operational impact summary with cited label sections.
+  - Avoid final handling instructions until approval is recorded.
+  escalation_criteria:
+  - The label update changes refrigeration, room-temperature, light-protection, or dilution requirements.
+  - The affected drug is stocked in ADC, ICU, ER, OR, oncology, or procedural locations.
+  - Existing inventory may be stored under conditions that conflict with the updated label.
+  - The generated draft includes handling instructions for clinical staff.
+  approval_requirements:
+  - Pharmacist review is required before storage or handling changes are communicated.
+  - Department-facing handling instructions require final approval.
+  audit_requirements:
+  - Label source, changed section, affected inventory locations, draft version, and reviewer decision must be retained.
