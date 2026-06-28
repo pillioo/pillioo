@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--force", action="store_true", help="Refresh existing cache entries.")
     parser.add_argument("--reset", action="store_true", help="Clear the cache before rebuilding.")
+    parser.add_argument(
+        "--best-effort",
+        action="store_true",
+        help="Write successful cache entries and exit zero even if some RxNorm lookups fail.",
+    )
     return parser
 
 
@@ -113,6 +119,14 @@ def main() -> None:
     print(f"skipped={skipped}")
     print(f"failed={failed}")
     print(f"cache_path={path}")
+
+    if failed and not args.best_effort:
+        print(
+            "[ERROR] RxNorm identity cache generation had failed lookups. "
+            "Rerun with --best-effort to allow partial cache output.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@ def build_sop_evidence_requirements(sop: dict[str, Any]) -> list[str]:
     if has_profile(sop, "shortage"):
         requirements.extend(
             [
-                "Shortage workflows should retrieve shortage_notice, policy, SOP, and label evidence when available.",
+                "Shortage workflows should retrieve available shortage evidence together with policy, SOP, and label evidence when available.",
                 "Shortage evidence should include affected drug, severity, expected duration, inventory risk, and mitigation considerations.",
                 "Inventory evidence should include current stock, usage estimate, days of supply, and high-risk department demand.",
                 "Substitution-related evidence must include policy or SOP support before action language is drafted.",

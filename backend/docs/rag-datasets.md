@@ -32,6 +32,7 @@ The cache maps raw drug names to normalized identity metadata:
 - `rxnorm_rxcui`
 - `rxnorm_name`
 - `rxnorm_tty`
+- `rxnorm_approximate_score`
 - `match_basis`
 
 OpenFDA label and recall markdown generation uses this cache when available.

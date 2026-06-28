@@ -480,6 +480,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - high-alert medication
   - warfarin
   - heparin
@@ -524,6 +526,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - safety check
   - blocked category
   - unsafe action
@@ -569,6 +573,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - HITL
   - pharmacist approval
   - final approval
@@ -613,6 +619,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - insufficient evidence
   - missing source
   - coverage score
@@ -657,6 +665,8 @@
   requires_human_approval: false
   applies_to:
   - recall
+  - shortage
+  - label_update
   - rag_quality_check
   - retrieval quality
   - evidence chunks
@@ -701,6 +711,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - draft report
   - evidence citations
   - impact summary
@@ -744,6 +756,8 @@
   requires_human_approval: false
   applies_to:
   - recall
+  - shortage
+  - label_update
   - audit log
   - workflow traceability
   - evidence citation
@@ -828,6 +842,8 @@
   requires_human_approval: true
   applies_to:
   - recall
+  - shortage
+  - label_update
   - inventory match
   - exact_ndc_match
   - fuzzy_name_match

@@ -262,7 +262,7 @@ def is_primary_identity_candidate(product_name: str, query_drug_name: str) -> bo
         return False
 
     primary_part = re.split(
-        r"\b(?:and|in|with)\b|,",
+        r"\b(?:and|in|with)\b|[,;/+&]",
         product_name.lower(),
         maxsplit=1,
     )[0]
