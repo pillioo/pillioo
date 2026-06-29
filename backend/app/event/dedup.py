@@ -1,49 +1,22 @@
+from threading import Lock
 from app.event.schema import DedupResponse
 
 # 1주차 MVP용 임시 데이터베이스 (메모리에 event_id 저장)
 # 프로그램이 실행되는 동안 중복 여부를 기억한다.
 _mock_processed_events = set()
+_mock_processed_events_lock = Lock()
 
 def check_and_save_event(event_id: str) -> DedupResponse:
-    """
-    이벤트 ID가 이미 처리된 적 있는지 검사합니다.
-    새로운 이벤트라면 임시 저장소에 기록하고 DedupResponse 형태로 반환합니다.
-    
-    Args:
-        event_id (str): FDA 이벤트 고유 ID (예: "D-001-2026")
-        
-    Returns:
-        DedupResponse: 중복 여부 결과를 담은 Pydantic 객체
-    """
-    
-    # 1. 중복 검사: 이미 저장소에 ID가 존재하는 경우
-    if event_id in _mock_processed_events:
-        return DedupResponse(duplicated=True)
-    
-    # 2. 신규 이벤트: 저장소에 ID를 추가하고 중복 없음(False)으로 반환
-    _mock_processed_events.add(event_id)
-    return DedupResponse(duplicated=False)
 
+    with _mock_processed_events_lock:
 
-# --- PostgreSQL 연동 시 교체될 코드 뼈대 (참고용) ---
-"""
-from sqlalchemy.orm import Session
-from app.db.models import ProcessedEvent # P5가 만들어줄 모델
+        # 1. 중복 검사: 이미 저장소에 ID가 존재하는 경우
+        if event_id in _mock_processed_events:
+            return DedupResponse(duplicated=True)
 
-def check_and_save_event_db(event_id: str, db: Session) -> DedupResponse:
-    # 1. DB에서 event_id 조회
-    existing_event = db.query(ProcessedEvent).filter(ProcessedEvent.event_id == event_id).first()
-    
-    if existing_event:
-        return DedupResponse(duplicated=True)
-        
-    # 2. DB에 새 event_id 저장
-    new_event = ProcessedEvent(event_id=event_id)
-    db.add(new_event)
-    db.commit()
-    
-    return DedupResponse(duplicated=False)
-"""
+        # 2. 신규 이벤트: 저장소에 ID를 추가하고 중복 없음(False)으로 반환
+        _mock_processed_events.add(event_id)
+        return DedupResponse(duplicated=False)
 
 # --- 개발자용 로컬 테스트 코드 ---
 if __name__ == "__main__":
