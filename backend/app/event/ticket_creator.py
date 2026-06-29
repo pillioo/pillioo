@@ -10,8 +10,8 @@ _mock_tickets_db = {}
 
 def create_ticket(event_data: EventNormalized) -> Ticket:
 
-    # 1. 고유한 티켓 ID 생성 (예: T- + 고유번호 앞 8자리)
-    ticket_id = f"T-{str(uuid.uuid4())[:8].upper()}"
+    # 1. 고유한 티켓 ID 생성 (예: T- + 고유번호)
+    +    ticket_id = f"T-{uuid.uuid4().hex.upper()}"
     
     # 2. 현재 시간 기록 (UTC 기준)
     created_at = datetime.now(timezone.utc)
