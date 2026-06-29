@@ -11,7 +11,7 @@ Version flow:
 
 from sqlalchemy.orm import Session
 
-from app.db.models.report import ReportVersion as ReportVersionModel
+from app.db.models.report_version_model import ReportVersion as ReportVersionModel
 from app.schemas.common import ReportVersionTag
 
 

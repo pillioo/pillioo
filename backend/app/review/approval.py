@@ -11,7 +11,7 @@ All decisions are recorded in audit_logs.
 
 from sqlalchemy.orm import Session
 
-from app.db.models.approval import Approval
+from app.db.models.approval_model import Approval
 from app.event.safety import draft_safety_check
 from app.report.versioning import save_report_version
 from app.audit.logger import write_audit_log

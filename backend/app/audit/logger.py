@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.db.models.audit import AuditLog
+from app.db.models.audit_log_model import AuditLog
 from app.schemas.common import WorkflowStep
 from app.schemas.workflow import AuditLogEntry
 
