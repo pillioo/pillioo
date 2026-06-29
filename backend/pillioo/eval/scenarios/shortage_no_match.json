@@ -1,0 +1,20 @@
+{
+  "scenario_id": "shortage_no_match",
+  "description": "shortage, 재고 없음 → no_impact_close",
+  "input_event": {
+    "event_type": "shortage",
+    "drug_name": "alteplase",
+    "ndc": "50242004001",
+    "lot": null,
+    "classification": null,
+    "reason_for_recall": null
+  },
+  "expected": {
+    "review_type": "no_impact_close",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": null,
+    "urgent": false,
+    "final_status": "CLOSED"
+  }
+}

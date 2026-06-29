@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_class1_icu",
+  "description": "Class I recall, ICU/ER 재고 있음, unsafe 문장 포함",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "midazolam",
+    "ndc": "00641601441",
+    "lot": "LOT-A",
+    "classification": "Class I",
+    "reason_for_recall": "Particulate matter contamination"
+  },
+  "expected": {
+    "review_type": "action_review",
+    "evidence_status": "sufficient",
+    "blocked_sentences": true,
+    "priority": "HIGH",
+    "urgent": true,
+    "final_status": "REVIEW_ROUTED"
+  }
+}
