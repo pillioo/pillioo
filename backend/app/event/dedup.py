@@ -3,6 +3,10 @@ from app.event.schema import DedupResponse
 
 # 1주차 MVP용 임시 데이터베이스 (메모리에 event_id 저장)
 # 프로그램이 실행되는 동안 중복 여부를 기억한다.
+
+# ⚠️ MVP limitation: in-memory storage resets on server restart.
+#    Replace with DB-backed storage after P5 PostgreSQL connection is ready.
+
 _mock_processed_events = set()
 _mock_processed_events_lock = Lock()
 
@@ -17,6 +21,17 @@ def check_and_save_event(event_id: str) -> DedupResponse:
         # 2. 신규 이벤트: 저장소에 ID를 추가하고 중복 없음(False)으로 반환
         _mock_processed_events.add(event_id)
         return DedupResponse(duplicated=False)
+    
+# 코드리뷰 반영 : 새로 함수 2개로 추가 (#24)
+def is_duplicate(event_id: str) -> bool:
+    """중복 여부만 확인 (저장 안 함)"""
+    with _mock_processed_events_lock:
+        return event_id in _mock_processed_events
+
+def save_event(event_id: str) -> None:
+    """처리 완료 후 저장"""
+    with _mock_processed_events_lock:
+        _mock_processed_events.add(event_id)
 
 # --- 개발자용 로컬 테스트 코드 ---
 if __name__ == "__main__":
