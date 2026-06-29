@@ -58,7 +58,7 @@ def write_audit_log(
         duration_ms=duration_ms,
     )
     db.add(entry)
-    db.commit()
+    db.flush() 
     db.refresh(entry)
     return entry
 

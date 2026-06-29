@@ -49,8 +49,10 @@ async def get_review_payload(
     # if not state:
     #     raise_review_error(ReviewError.TICKET_NOT_FOUND, {"ticket_id": ticket_id})
     # return build_review_payload(state)
-    return {"message": f"Review payload for ticket {ticket_id} - pending Orchestrator connection"}
-
+    raise_review_error(
+        ReviewError.REVIEW_NOT_FOUND,
+        {"ticket_id": ticket_id, "reason": "Orchestrator connection pending"}
+    )
 
 @router.get("/approval/pending")
 async def get_pending_approvals(
@@ -110,8 +112,17 @@ async def approve_ticket(
             {"ticket_id": ticket_id, "reason": "final_v1 already exists for this ticket"},
         )
 
-    # TODO: 실제 draft 내용을 TicketState에서 가져오도록 교체
-    current_draft = "mock draft content"
+    # TODO: 실제 TicketState에서 draft_text 가져오도록 교체
+    # state = get_ticket_state(db, ticket_id)
+    # current_draft = state.draft_text
+    # 현재는 최신 버전에서 가져오는 방식으로 대체
+    latest = get_latest_report(db=db, ticket_id=ticket_id)
+    if not latest:
+        raise_review_error(
+            ReviewError.REPORT_NOT_FOUND,
+            {"ticket_id": ticket_id}
+        )
+    current_draft = latest.content
 
     return handle_approve(
         db=db,

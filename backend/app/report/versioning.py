@@ -52,7 +52,7 @@ def save_report_version(
         created_by=created_by,
     )
     db.add(version)
-    db.commit()
+    db.flush() 
     db.refresh(version)
     return version
 

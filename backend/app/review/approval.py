@@ -60,7 +60,7 @@ def handle_approve(
         comment=request.comment,
     )
     db.add(approval)
-    db.commit()
+    db.flush() 
 
     # 2. final_v1 저장
     save_report_version(
@@ -81,7 +81,8 @@ def handle_approve(
         output_json={"approval_status": "approved", "version": "final_v1"},
         duration_ms=duration_ms,
     )
-
+    db.commit()
+    
     return {
         "ticket_id": ticket_id,
         "approval_status": ApprovalStatus.APPROVED.value,
@@ -127,7 +128,7 @@ def handle_reject(
         comment=request.comment,
     )
     db.add(approval)
-    db.commit()
+    db.flush()
 
     # 2. audit log 기록
     duration_ms = int((time.time() - start) * 1000)
@@ -139,6 +140,7 @@ def handle_reject(
         output_json={"approval_status": "rejected", "comment": request.comment},
         duration_ms=duration_ms,
     )
+    db.commit()
 
     return {
         "ticket_id": ticket_id,
@@ -226,6 +228,7 @@ def handle_revise(
         },
         duration_ms=duration_ms,
     )
+    db.commit()
 
     return {
         "ticket_id": ticket_id,

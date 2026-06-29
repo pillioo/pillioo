@@ -21,6 +21,7 @@ from app.schemas.review import (
     EvidenceIssue,
 )
 from app.schemas.workflow import TicketState
+from backend.app.review.errors import ReviewError, ReviewError, raise_review_error
 
 
 def build_review_payload(state: TicketState) -> ReviewPayload:
@@ -125,4 +126,8 @@ def build_review_payload(state: TicketState) -> ReviewPayload:
         )
 
     else:
-        raise ValueError(f"Unsupported review_type for payload: {review_type}")
+        from app.review.errors import ReviewError, raise_review_error
+        raise_review_error(
+            ReviewError.INVALID_REVIEW_TYPE,
+            {"review_type": str(review_type)}
+        )
