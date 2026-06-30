@@ -12,7 +12,7 @@ from scripts.rag.chunking.config import (
     TOKEN_COUNT_METHOD,
     TOKEN_ENCODING_NAME,
 )
-from scripts.rag.chunking.document import parse_markdown_document
+from scripts.rag.chunking.document import parse_markdown_document, relative_source_path
 from scripts.rag.chunking.merging import merge_small_chunks, reindex_chunks
 from scripts.rag.chunking.records import chunk_document
 
@@ -32,7 +32,11 @@ def build_chunks(documents_dir: Path = DOCUMENTS_DIR) -> tuple[list[dict[str, An
     for path in iter_document_paths(documents_dir):
         document = parse_markdown_document(path)
         document_count_by_type[str(document.frontmatter["document_type"])] += 1
-        document_chunks, document_warnings = chunk_document(document)
+        try:
+            document_chunks, document_warnings = chunk_document(document)
+        except ValueError as exc:
+            warnings.append(f"{relative_source_path(path)} failed chunking: {exc}")
+            continue
         chunks.extend(document_chunks)
         warnings.extend(document_warnings)
 

@@ -6,6 +6,7 @@ import pytest
 
 from scripts.rag.chunking.document import parse_markdown_document, split_markdown_sections
 from scripts.rag.chunking.merging import merge_small_chunks
+from scripts.rag.chunking.pipeline import build_chunks
 from scripts.rag.chunking.records import build_chunk_record, chunk_document
 
 
@@ -126,3 +127,46 @@ def test_chunk_document_enforces_prefixed_token_limit(
 
     with pytest.raises(ValueError, match="exceeded token limit"):
         chunk_document(document)
+
+
+def test_build_chunks_records_document_level_chunking_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    documents_dir = tmp_path / "documents"
+    policy_dir = documents_dir / "policy"
+    policy_dir.mkdir(parents=True)
+    write_document(
+        policy_dir / "bad.md",
+        frontmatter=(
+            "document_id: policy-bad\n"
+            "document_type: policy\n"
+            "event_type: shortage\n"
+            "event_types: [shortage]\n"
+            "title: Bad Policy"
+        ),
+        body="# Bad Policy\n\n## Policy Statement\n" + "word " * 700,
+    )
+    write_document(
+        policy_dir / "good.md",
+        frontmatter=(
+            "document_id: policy-good\n"
+            "document_type: policy\n"
+            "event_type: shortage\n"
+            "event_types: [shortage]\n"
+            "title: Good Policy"
+        ),
+        body="# Good Policy\n\n## Policy Statement\nUse with care.",
+    )
+    monkeypatch.setattr("scripts.rag.chunking.records.count_tokens", lambda content: len(content.split()))
+    monkeypatch.setattr(
+        "scripts.rag.chunking.records.split_section_content",
+        lambda content, max_chars, max_tokens: [content],
+    )
+
+    chunks, manifest = build_chunks(documents_dir)
+
+    assert [chunk["document_id"] for chunk in chunks] == ["policy-good"]
+    assert manifest["total_documents"] == 2
+    assert len(manifest["warnings"]) == 1
+    assert "bad.md failed chunking" in manifest["warnings"][0]
