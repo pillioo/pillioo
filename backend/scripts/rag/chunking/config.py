@@ -24,9 +24,9 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 TOKEN_ENCODING_NAME = "cl100k_base"
 TOKEN_COUNT_METHOD = "tiktoken" if tiktoken is not None else "char_estimate"
 
-VALID_DOCUMENT_TYPES = {"label", "recall_notice", "sop", "policy"}
 VALID_EVENT_TYPES = {"recall", "shortage", "label_update"}
 DOCUMENT_TYPE_DIRS = ["label", "recall_notice", "sop", "policy"]
+VALID_DOCUMENT_TYPES = set(DOCUMENT_TYPE_DIRS)
 
 # Character windows are still used as a first pass because openFDA text often
 # arrives as long unbroken paragraphs. Token limits below remain the hard cap.
