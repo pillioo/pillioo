@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 
-from app.event.dedup import check_and_save_event, release_event
+from app.schemas.io import EventUploadRequest, EventUploadResponse
 from app.event.normalizer import normalize_event
 from app.event.ticket_creator import create_ticket
-from app.schemas.io import EventUploadRequest, EventUploadResponse
+from app.event.dedup import check_and_save_event, release_event
 
 router = APIRouter()
 
@@ -30,10 +30,13 @@ async def upload_event(payload: EventUploadRequest) -> EventUploadResponse:
             ticket = create_ticket(event)
         except Exception as e:
             release_event(event.event_id)  # 예약 취소
-            raise HTTPException(status_code=500, detail={
-                "error_code": "INTERNAL_SERVER_ERROR",
-                "message": "Failed to create ticket"
-            }) from e
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "INTERNAL_SERVER_ERROR",
+                    "message": "Failed to create ticket"
+                }
+            ) from e
 
         # 4. duplicated: False 명시
         return EventUploadResponse(
