@@ -16,11 +16,46 @@ REFERENCE_DIR = ROOT_DIR / "data" / "reference"
 DEFAULT_CACHE_PATH = REFERENCE_DIR / "drug_identity_cache.json"
 MIN_APPROXIMATE_SCORE = 80
 
+# Common salt/formulation suffixes stripped when resolving combination drugs.
+_SALT_SUFFIXES = re.compile(
+    r"\s+(hydrochloride|hcl|sodium|potassium|sulfate|bitartrate|phosphate"
+    r"|maleate|tartrate|acetate|fumarate|gluconate|mesylate|tosylate|bromide"
+    r"|chloride|citrate|lactate|nitrate|succinate)$",
+    re.IGNORECASE,
+)
+
 
 def normalize_identity_key(name: str) -> str:
     value = name.lower().strip()
     value = re.sub(r"\s+", " ", value)
     return value
+
+
+def _normalization_variants(name: str) -> list[tuple[str, str]]:
+    """Return alternative search strings paired with a match_basis label.
+
+    Tried in order after exact and approximate lookups both fail.
+    Each tuple is (variant_string, match_basis_suffix).
+    """
+    variants: list[tuple[str, str]] = []
+
+    # Strip "in <vehicle>" carrier (e.g. "esmolol hydrochloride in sodium chloride")
+    stripped_vehicle = re.sub(r"\s+in\s+.+$", "", name, flags=re.IGNORECASE).strip()
+    if stripped_vehicle != name:
+        variants.append((stripped_vehicle, "rxnorm_exact_stripped_vehicle"))
+
+    # Normalise "X and Y" → "X/Y" (RxNorm uses "/" for combinations)
+    normalised_combo = re.sub(r"\s+and\s+", "/", name, flags=re.IGNORECASE)
+    if normalised_combo != name:
+        variants.append((normalised_combo, "rxnorm_exact_normalised_combination"))
+
+        # Strip salt forms from each component of the normalised combination
+        components = [_SALT_SUFFIXES.sub("", c.strip()) for c in normalised_combo.split("/")]
+        desalted = "/".join(c for c in components if c)
+        if desalted != normalised_combo:
+            variants.append((desalted, "rxnorm_exact_desalted_combination"))
+
+    return variants
 
 
 def fallback_identity(name: str) -> dict[str, Any]:
@@ -103,6 +138,13 @@ def resolve_drug_identity(name: str) -> dict[str, Any]:
             rxcui = candidate["rxcui"]
             approximate_score = candidate["score"]
         match_basis = "rxnorm_approximate"
+
+    if rxcui is None:
+        for variant, basis in _normalization_variants(normalized_input):
+            rxcui = find_rxcui_by_string(variant)
+            if rxcui is not None:
+                match_basis = basis
+                break
 
     if rxcui is None:
         return fallback_identity(name)
