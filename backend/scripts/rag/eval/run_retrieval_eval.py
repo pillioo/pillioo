@@ -38,7 +38,7 @@ OUTPUT_FIELDS = [
     "normalized_drug_name",
     "rxnorm_rxcui",
     "classification",
-    "ndc_json",
+    "ndc",
     "lot",
     "recall_number",
     "metadata_json",
@@ -182,16 +182,107 @@ def matches_expected(hit: dict[str, Any], expected: dict[str, Any]) -> bool:
     return True
 
 
-def evaluate_hits(hits: list[dict[str, Any]], expected: dict[str, Any]) -> dict[str, Any]:
-    matching_index = next(
-        (index for index, hit in enumerate(hits, start=1) if matches_expected(hit, expected)),
-        None,
-    )
+def split_expected(expected: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    if "any_hit" in expected or "set" in expected:
+        any_hit = expected.get("any_hit") or {}
+        set_expected = expected.get("set") or {}
+        if not isinstance(any_hit, dict) or not isinstance(set_expected, dict):
+            raise ValueError("expected.any_hit and expected.set must be objects when provided.")
+        return any_hit, set_expected
+    return expected, {}
+
+
+def list_values(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def has_citation_fields(hit: dict[str, Any]) -> bool:
+    return all(str(hit.get(field) or "").strip() for field in ["chunk_id", "source_path", "content"])
+
+
+def evaluate_hit_set(hits: list[dict[str, Any]], expected: dict[str, Any]) -> dict[str, Any]:
+    failures: list[str] = []
+
+    min_evidence_count = expected.get("min_evidence_count")
+    if min_evidence_count is not None and len(hits) < int(min_evidence_count):
+        failures.append(f"min_evidence_count {len(hits)} < {min_evidence_count}")
+
+    required_document_types = {str(value) for value in list_values(expected.get("required_document_types"))}
+    if required_document_types:
+        actual_document_types = {str(hit.get("document_type")) for hit in hits}
+        missing = sorted(required_document_types - actual_document_types)
+        if missing:
+            failures.append(f"missing document_types: {missing}")
+
+    required_sections = {str(value) for value in list_values(expected.get("required_sections"))}
+    if required_sections:
+        actual_sections = {str(hit.get("section")) for hit in hits}
+        missing = sorted(required_sections - actual_sections)
+        if missing:
+            failures.append(f"missing sections: {missing}")
+
+    if expected.get("must_have_citations") and not all(has_citation_fields(hit) for hit in hits):
+        failures.append("one or more hits missing citation fields")
+
+    ndc_matches = {str(value) for value in list_values(expected.get("ndc_match"))}
+    if ndc_matches:
+        actual_ndcs = {str(ndc) for hit in hits for ndc in list_values(hit.get("ndc"))}
+        missing = sorted(ndc_matches - actual_ndcs)
+        if missing:
+            failures.append(f"missing ndc matches: {missing}")
+
+    lot_matches = {str(value) for value in list_values(expected.get("lot_match"))}
+    if lot_matches:
+        actual_lots = {str(hit.get("lot")) for hit in hits if hit.get("lot")}
+        missing = sorted(lot_matches - actual_lots)
+        if missing:
+            failures.append(f"missing lot matches: {missing}")
+
     return {
-        "passed": matching_index is not None,
+        "passed": not failures,
+        "failures": failures,
+    }
+
+
+def evaluate_hits(hits: list[dict[str, Any]], expected: dict[str, Any]) -> dict[str, Any]:
+    any_hit_expected, set_expected = split_expected(expected)
+    matching_index = next(
+        (index for index, hit in enumerate(hits, start=1) if matches_expected(hit, any_hit_expected)),
+        None,
+    ) if any_hit_expected else None
+    any_hit_passed = matching_index is not None if any_hit_expected else True
+    set_evaluation = evaluate_hit_set(hits, set_expected) if set_expected else {"passed": True, "failures": []}
+    passed = any_hit_passed and bool(set_evaluation["passed"])
+    failures = []
+    if not any_hit_passed:
+        failures.append("no hit matched expected.any_hit")
+    failures.extend(set_evaluation["failures"])
+    return {
+        "passed": passed,
         "rank": matching_index,
         "top_chunk_id": hits[0].get("chunk_id") if hits else None,
         "top_score": hits[0].get("score") if hits else None,
+        "failures": failures,
+    }
+
+
+def is_correctly_empty_expected(expected: dict[str, Any]) -> bool:
+    _, set_expected = split_expected(expected)
+    min_evidence_count = set_expected.get("min_evidence_count")
+    return min_evidence_count is not None and int(min_evidence_count) == 0
+
+
+def evaluate_empty_hits(hits: list[dict[str, Any]], expected: dict[str, Any]) -> dict[str, Any]:
+    if hits or not is_correctly_empty_expected(expected):
+        return evaluate_hits(hits, expected)
+    return {
+        "passed": True,
+        "rank": None,
+        "top_chunk_id": None,
+        "top_score": None,
+        "failures": [],
     }
 
 
@@ -208,6 +299,7 @@ def compact_hit(hit: dict[str, Any]) -> dict[str, Any]:
         "normalized_drug_name": hit.get("normalized_drug_name"),
         "rxnorm_rxcui": hit.get("rxnorm_rxcui"),
         "classification": hit.get("classification"),
+        "ndc": hit.get("ndc"),
         "recall_number": hit.get("recall_number"),
         "content_preview": content[:240].replace("\n", " "),
     }
@@ -239,7 +331,7 @@ def run_queries(
             dedupe_field=dedupe_field,
             oversample=oversample,
         )
-        evaluation = evaluate_hits(hits, golden.expected)
+        evaluation = evaluate_empty_hits(hits, golden.expected)
         results.append(
             {
                 "id": golden.id,

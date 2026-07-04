@@ -33,10 +33,14 @@ VARCHAR_MAX = {
     "normalized_drug_name": 512,
     "rxnorm_rxcui": 128,
     "classification": 128,
+    "ndc": 64,
     "lot": 1024,
     "recall_number": 128,
     "embedding_model": 128,
     "content_hash": 128,
+}
+ARRAY_MAX = {
+    "ndc": 64,
 }
 
 
@@ -79,7 +83,14 @@ def ensure_collection(
     schema.add_field("normalized_drug_name", DataType.VARCHAR, max_length=VARCHAR_MAX["normalized_drug_name"])
     schema.add_field("rxnorm_rxcui", DataType.VARCHAR, max_length=VARCHAR_MAX["rxnorm_rxcui"])
     schema.add_field("classification", DataType.VARCHAR, max_length=VARCHAR_MAX["classification"])
-    schema.add_field("ndc_json", DataType.JSON)
+    # Keep NDC filterable for retrieval; JSON fields are harder to use in Milvus filter expressions.
+    schema.add_field(
+        "ndc",
+        DataType.ARRAY,
+        element_type=DataType.VARCHAR,
+        max_capacity=ARRAY_MAX["ndc"],
+        max_length=VARCHAR_MAX["ndc"],
+    )
     schema.add_field("lot", DataType.VARCHAR, max_length=VARCHAR_MAX["lot"])
     schema.add_field("recall_number", DataType.VARCHAR, max_length=VARCHAR_MAX["recall_number"])
     schema.add_field("metadata_json", DataType.JSON)
@@ -97,10 +108,22 @@ def ensure_collection(
     client.create_collection(collection_name=collection_name, schema=schema, index_params=index_params)
 
 
-def truncate(value: Any, max_length: int) -> str:
+def truncate(
+    value: Any,
+    max_length: int,
+    *,
+    field: str,
+    chunk_id: str,
+    strict: bool = False,
+) -> str:
     if value is None:
         return ""
     text = str(value)
+    if len(text) > max_length:
+        message = f"[MILVUS] field={field} chunk_id={chunk_id} truncated {len(text)} -> {max_length} chars"
+        if strict:
+            raise ValueError(message)
+        print(message, flush=True)
     return text[:max_length]
 
 
@@ -110,29 +133,62 @@ def as_json_array(value: Any) -> list[Any]:
     return value if isinstance(value, list) else [value]
 
 
+def as_varchar_array(value: Any, *, field: str, chunk_id: str, max_length: int, max_capacity: int) -> list[str]:
+    values = as_json_array(value)
+    if len(values) > max_capacity:
+        print(
+            f"[MILVUS] field={field} chunk_id={chunk_id} truncated array {len(values)} -> {max_capacity} items",
+            flush=True,
+        )
+    return [
+        truncate(item, max_length, field=field, chunk_id=chunk_id)
+        for item in values[:max_capacity]
+        if item is not None and str(item).strip()
+    ]
+
+
 def to_milvus_row(record: dict[str, Any]) -> dict[str, Any]:
+    # Never truncate the primary key; collisions here would silently overwrite evidence rows.
+    chunk_id = truncate(
+        record["chunk_id"],
+        VARCHAR_MAX["chunk_id"],
+        field="chunk_id",
+        chunk_id=str(record["chunk_id"]),
+        strict=True,
+    )
     return {
-        "chunk_id": truncate(record["chunk_id"], VARCHAR_MAX["chunk_id"]),
+        "chunk_id": chunk_id,
         "embedding": record["embedding"],
-        "content": truncate(record["content"], VARCHAR_MAX["content"]),
-        "document_id": truncate(record["document_id"], VARCHAR_MAX["document_id"]),
-        "document_type": truncate(record["document_type"], VARCHAR_MAX["document_type"]),
-        "event_type": truncate(record["event_type"], VARCHAR_MAX["event_type"]),
+        "content": truncate(record["content"], VARCHAR_MAX["content"], field="content", chunk_id=chunk_id),
+        "document_id": truncate(record["document_id"], VARCHAR_MAX["document_id"], field="document_id", chunk_id=chunk_id),
+        "document_type": truncate(record["document_type"], VARCHAR_MAX["document_type"], field="document_type", chunk_id=chunk_id),
+        "event_type": truncate(record["event_type"], VARCHAR_MAX["event_type"], field="event_type", chunk_id=chunk_id),
         "event_types_json": as_json_array(record.get("event_types")),
-        "section": truncate(record["section"], VARCHAR_MAX["section"]),
-        "section_title": truncate(record["section_title"], VARCHAR_MAX["section_title"]),
-        "title": truncate(record["title"], VARCHAR_MAX["title"]),
-        "source_path": truncate(record["source_path"], VARCHAR_MAX["source_path"]),
-        "drug_name": truncate(record.get("drug_name"), VARCHAR_MAX["drug_name"]),
-        "normalized_drug_name": truncate(record.get("normalized_drug_name"), VARCHAR_MAX["normalized_drug_name"]),
-        "rxnorm_rxcui": truncate(record.get("rxnorm_rxcui"), VARCHAR_MAX["rxnorm_rxcui"]),
-        "classification": truncate(record.get("classification"), VARCHAR_MAX["classification"]),
-        "ndc_json": as_json_array(record.get("ndc")),
-        "lot": truncate(record.get("lot"), VARCHAR_MAX["lot"]),
-        "recall_number": truncate(record.get("recall_number"), VARCHAR_MAX["recall_number"]),
+        "section": truncate(record["section"], VARCHAR_MAX["section"], field="section", chunk_id=chunk_id),
+        "section_title": truncate(record["section_title"], VARCHAR_MAX["section_title"], field="section_title", chunk_id=chunk_id),
+        "title": truncate(record["title"], VARCHAR_MAX["title"], field="title", chunk_id=chunk_id),
+        "source_path": truncate(record["source_path"], VARCHAR_MAX["source_path"], field="source_path", chunk_id=chunk_id),
+        "drug_name": truncate(record.get("drug_name"), VARCHAR_MAX["drug_name"], field="drug_name", chunk_id=chunk_id),
+        "normalized_drug_name": truncate(
+            record.get("normalized_drug_name"),
+            VARCHAR_MAX["normalized_drug_name"],
+            field="normalized_drug_name",
+            chunk_id=chunk_id,
+        ),
+        "rxnorm_rxcui": truncate(record.get("rxnorm_rxcui"), VARCHAR_MAX["rxnorm_rxcui"], field="rxnorm_rxcui", chunk_id=chunk_id),
+        "classification": truncate(record.get("classification"), VARCHAR_MAX["classification"], field="classification", chunk_id=chunk_id),
+        "ndc": as_varchar_array(
+            record.get("ndc"),
+            field="ndc",
+            chunk_id=chunk_id,
+            max_length=VARCHAR_MAX["ndc"],
+            max_capacity=ARRAY_MAX["ndc"],
+        ),
+        "lot": truncate(record.get("lot"), VARCHAR_MAX["lot"], field="lot", chunk_id=chunk_id),
+        "recall_number": truncate(record.get("recall_number"), VARCHAR_MAX["recall_number"], field="recall_number", chunk_id=chunk_id),
         "metadata_json": record.get("metadata", {}),
-        "embedding_model": truncate(record["embedding_model"], VARCHAR_MAX["embedding_model"]),
-        "content_hash": truncate(record["content_hash"], VARCHAR_MAX["content_hash"]),
+        "embedding_model": truncate(record["embedding_model"], VARCHAR_MAX["embedding_model"], field="embedding_model", chunk_id=chunk_id),
+        "content_hash": truncate(record["content_hash"], VARCHAR_MAX["content_hash"], field="content_hash", chunk_id=chunk_id),
     }
 
 
