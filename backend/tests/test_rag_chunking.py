@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.rag.chunking.build_chunks import main as build_chunks_main
 from scripts.rag.chunking.document import parse_markdown_document, split_markdown_sections
 from scripts.rag.chunking.merging import merge_small_chunks
 from scripts.rag.chunking.pipeline import build_chunks
@@ -170,3 +171,40 @@ def test_build_chunks_records_document_level_chunking_errors(
     assert manifest["total_documents"] == 2
     assert len(manifest["warnings"]) == 1
     assert "bad.md failed chunking" in manifest["warnings"][0]
+
+
+def test_build_chunks_cli_removes_temp_files_on_write_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "chunks.jsonl"
+    manifest = tmp_path / "manifest.json"
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "build_chunks",
+            "--output",
+            str(output),
+            "--manifest",
+            str(manifest),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.rag.chunking.build_chunks.build_chunks",
+        lambda documents_dir: ([{"chunk_id": "chunk-1"}], {"total_documents": 1, "total_chunks": 1, "warnings": []}),
+    )
+
+    def fail_write_manifest(data: dict, path: Path) -> Path:
+        path.write_text("partial", encoding="utf-8")
+        raise RuntimeError("manifest write failed")
+
+    monkeypatch.setattr("scripts.rag.chunking.build_chunks.write_manifest", fail_write_manifest)
+
+    with pytest.raises(RuntimeError, match="manifest write failed"):
+        build_chunks_main()
+
+    assert not output.exists()
+    assert not manifest.exists()
+    assert not output.with_suffix(".jsonl.tmp").exists()
+    assert not manifest.with_suffix(".json.tmp").exists()
