@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_class2_fuzzy",
+  "description": "Class II recall, fuzzy match → identity_review",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "midazolam",
+    "ndc": "00409222510",
+    "lot": "LOT-B",
+    "classification": "Class II",
+    "reason_for_recall": "Subpotent drug"
+  },
+  "expected": {
+    "review_type": "identity_review",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": "MEDIUM",
+    "urgent": false,
+    "final_status": "REVIEW_ROUTED"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_identity_review",
+  "description": "NDC 불일치, generic name 유사 → identity_review",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "midazolam",
+    "ndc": "00004199401",
+    "lot": "LOT-C",
+    "classification": "Class II",
+    "reason_for_recall": "Particulate matter contamination"
+  },
+  "expected": {
+    "review_type": "identity_review",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": "MEDIUM",
+    "urgent": false,
+    "final_status": "REVIEW_ROUTED"
+  }
+}

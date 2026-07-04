@@ -1,0 +1,20 @@
+{
+  "scenario_id": "label_update_warning",
+  "description": "label_update, warnings 섹션 업데이트",
+  "input_event": {
+    "event_type": "label_update",
+    "drug_name": "fentanyl",
+    "ndc": "00409909301",
+    "lot": null,
+    "classification": null,
+    "reason_for_recall": null
+  },
+  "expected": {
+    "review_type": "final_approval",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": "HIGH",
+    "urgent": false,
+    "final_status": "REVIEW_ROUTED"
+  }
+}
