@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.rag.embedding.load_milvus import to_milvus_row, truncate
+from scripts.rag.embedding.milvus_mapping import to_milvus_row, truncate
+from scripts.rag.embedding.milvus_fields import OUTPUT_FIELDS, MilvusField
+from scripts.rag.embedding.validation import validate_collection_dimension, validate_collection_fields
 
 
 def make_embedded_record(**overrides: object) -> dict[str, object]:
@@ -40,6 +42,27 @@ def test_to_milvus_row_uses_filterable_ndc_array() -> None:
     assert "ndc_json" not in row
 
 
+def test_to_milvus_row_uses_filterable_event_types_array() -> None:
+    row = to_milvus_row(make_embedded_record(event_types=["recall", "shortage"]))
+
+    assert row["event_types"] == ["recall", "shortage"]
+    assert "event_types_json" not in row
+
+
+def test_to_milvus_row_validates_required_fields() -> None:
+    record = make_embedded_record(content="")
+
+    with pytest.raises(ValueError, match="missing required fields"):
+        to_milvus_row(record)
+
+
+def test_to_milvus_row_validates_embedding_dimension() -> None:
+    record = make_embedded_record(embedding=[0.1, 0.2])
+
+    with pytest.raises(ValueError, match="Embedding dimension mismatch"):
+        to_milvus_row(record, embedding_dim=3)
+
+
 def test_to_milvus_row_rejects_truncated_primary_key() -> None:
     record = make_embedded_record(chunk_id="x" * 513)
 
@@ -52,3 +75,42 @@ def test_truncate_logs_non_strict_truncation(capsys: pytest.CaptureFixture[str])
 
     assert value == "abc"
     assert "field=content chunk_id=chunk-1 truncated 6 -> 3 chars" in capsys.readouterr().out
+
+
+class FakeMilvusClient:
+    def __init__(self, dim: int | None, field_names: list[str] | None = None) -> None:
+        self.dim = dim
+        self.field_names = field_names
+
+    def describe_collection(self, *, collection_name: str) -> dict[str, object]:
+        field: dict[str, object] = {"name": "embedding"}
+        if self.dim is not None:
+            field["params"] = {"dim": self.dim}
+        fields = [field]
+        if self.field_names is not None:
+            fields = [{"name": name} for name in self.field_names]
+        return {"fields": fields}
+
+
+def test_validate_collection_dimension_accepts_matching_dimension() -> None:
+    validate_collection_dimension(FakeMilvusClient(1536), collection_name="evidence_chunks", embedding_dim=1536)
+
+
+def test_validate_collection_dimension_rejects_mismatch() -> None:
+    with pytest.raises(ValueError, match="embedding dimension mismatch"):
+        validate_collection_dimension(FakeMilvusClient(384), collection_name="evidence_chunks", embedding_dim=1536)
+
+
+def test_validate_collection_fields_accepts_expected_schema() -> None:
+    field_names = [MilvusField.EMBEDDING, *OUTPUT_FIELDS]
+
+    validate_collection_fields(FakeMilvusClient(None, field_names), collection_name="evidence_chunks")
+
+
+def test_validate_collection_fields_rejects_old_event_types_schema() -> None:
+    field_names = [MilvusField.EMBEDDING, *OUTPUT_FIELDS]
+    field_names.remove(MilvusField.EVENT_TYPES)
+    field_names.append("event_types_json")
+
+    with pytest.raises(ValueError, match="missing fields"):
+        validate_collection_fields(FakeMilvusClient(None, field_names), collection_name="evidence_chunks")
