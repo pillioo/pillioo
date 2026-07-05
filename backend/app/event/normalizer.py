@@ -24,9 +24,9 @@ DOSE_FORMS = [
     "syringe", "syringes", "for",
 ]
 
-# 제거할 염/부가어 목록 (salt forms)
+# 제거할 염/부가어 목록 (salt forms) -> "sodium"은 "sodium chloride" 처럼 약물명 자체가 sodium인 경우엔 제거하면 안 되므로 제외.
 SALT_FORMS = [
-    "hydrochloride", "hcl", "sodium", "sulfate", "bitartrate",
+    "hydrochloride", "hcl", "sulfate", "bitartrate",
     "citrate", "phosphate", "succinate", "tromethamine",
     "gluconate", "acetate", "bromide", "chloride", "nitrate",
 ]
