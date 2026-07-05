@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class DiffDetector:
     def __init__(self, db: Session):
         
-        # P5 팀원이 세팅한 실제 PostgreSQL DB 세션을 주입받는다.
+        # 팀원이 세팅한 실제 PostgreSQL DB 세션을 주입받는다.
         self.db = db
 
     def detect_difference(self, incoming_event: EventNormalized) -> Tuple[str, Optional[Ticket]]:
