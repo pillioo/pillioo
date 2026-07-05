@@ -166,6 +166,82 @@ recall, shortage, and label update workflows. They include metadata such as:
 Like SOP documents, every policy `applies_to` list should include its
 `event_type` value.
 
+### Chunks
+
+Chunk records are generated from the markdown evidence documents.
+
+Generated chunk output is written to:
+
+```text
+data/rag/processed/evidence_chunks.jsonl
+data/rag/processed/chunk_manifest.json
+data/rag/processed/embedded_chunks.jsonl
+```
+
+Chunk sizes and token counts are prepared for the configured embedding model
+(`EMBEDDING_MODEL`, default `text-embedding-3-small`). When `tiktoken` is
+installed, the chunker uses that tokenizer for splitting and counting;
+otherwise it falls back to a character-based token estimate and records that
+method in the manifest.
+
+Each chunk record includes retrieval and citation fields such as:
+
+- `chunk_id`
+- `document_id`
+- `document_type`
+- `event_type`
+- `event_types`
+- `section`
+- `section_title`
+- `title`
+- `content`
+- `source_path`
+- `chunk_index`
+- `token_count`
+- `drug_name`
+- `normalized_drug_name`
+- `rxnorm_rxcui`
+- `classification`
+- `ndc` (list of values, or `null`)
+- `metadata`
+
+The chunker parses frontmatter as metadata, splits markdown by `##` section,
+keeps retrieval-relevant sections for each document type, and enforces
+document-type token limits with sentence-aware overlap between split chunks.
+Each chunk content starts with a compact section context prefix such as
+`DOSAGE AND ADMINISTRATION - Example Label.` so retrieved evidence remains
+readable outside the full source document.
+
+For label documents, top-level `ndc` is derived from `product_ndc` and
+`package_ndc` when an explicit frontmatter `ndc` is absent. Recall chunks also
+carry filter-oriented metadata such as recall status, recalling firm, initiation
+and termination dates, reason category, distribution pattern, and product
+quantity when those values are available.
+
+The manifest records aggregate quality signals such as `min_token_count`,
+`max_token_count`, and `avg_token_count`.
+
+### Embeddings
+
+Embedding generation is intentionally separate from document and chunk
+generation because it calls the OpenAI API. The embedding script reads
+`evidence_chunks.jsonl` and writes a flat intermediate artifact:
+
+```text
+data/rag/processed/embedded_chunks.jsonl
+```
+
+Each embedded record includes the original retrieval fields plus:
+
+- `embedding_model`
+- `embedding_dim`
+- `embedding_created_at`
+- `content_hash`
+- `embedding`
+
+The `content_hash` field allows later jobs to skip chunks whose content has not
+changed.
+
 ## Generation Commands
 
 Generate the identity cache and all document datasets:
@@ -182,10 +258,13 @@ python -m scripts.generate_data --recalls
 python -m scripts.generate_data --sop
 python -m scripts.generate_data --policy
 python -m scripts.generate_data --identity
+python -m scripts.generate_data --chunks
+python -m scripts.generate_data --embeddings
 ```
 
 Running `python -m scripts.generate_data` with no flags also builds the identity
-cache and generates all four document datasets.
+cache, generates all four document datasets, and builds chunk JSONL. It does not
+generate embeddings unless `--embeddings` is explicitly provided.
 
 OpenFDA fetchers can also be run directly when lower-level options are needed:
 
@@ -195,10 +274,24 @@ python -m scripts.rag.openfda.fetch_labels --clean
 python -m scripts.rag.openfda.fetch_recalls --clean
 python -m scripts.rag.openfda.fetch_labels --from-raw --clean
 python -m scripts.rag.openfda.fetch_recalls --from-raw --clean
+python -m scripts.rag.chunking.build_chunks --clean
+python -m scripts.rag.embedding.embed_chunks --clean
 ```
 
 Use `--from-raw` to rebuild markdown from saved raw JSON without calling the
 openFDA API.
+
+Start the local Milvus stack:
+
+```powershell
+docker compose --profile rag up -d etcd minio milvus
+```
+
+Load embedded chunks into Milvus:
+
+```powershell
+python -m scripts.rag.embedding.load_milvus --drop-existing
+```
 
 ## Generated Output Policy
 
@@ -220,6 +313,8 @@ Commit:
 - `scripts/rag/openfda/`
 - `scripts/rag/sop/`
 - `scripts/rag/policy/`
+- `scripts/rag/chunking/`
+- `scripts/rag/embedding/`
 - `scripts/rag/common.py`
 - `scripts/rag/sop/sop_documents.yaml`
 - `scripts/rag/policy/policy_documents.yaml`
@@ -231,6 +326,7 @@ Do not commit:
 - fetch manifests
 - generated RxNorm cache
 - future chunk JSONL files
+- embedded chunk JSONL files
 
 ## Current Scope
 
@@ -245,14 +341,15 @@ Included:
 - recall notice markdown generation
 - SOP markdown generation from YAML
 - policy markdown generation from YAML
+- evidence chunk JSONL generation
+- chunk manifest generation
+- embedded chunk JSONL generation
+- Milvus evidence chunk loading
 - consistent frontmatter metadata
 - safe reruns with clean generated outputs
 
 Out of scope:
 
-- chunking
-- embedding generation
-- Milvus insertion
 - retrieval API
 - RAG quality scoring
 - LLM draft generation

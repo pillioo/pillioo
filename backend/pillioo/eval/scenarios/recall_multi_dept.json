@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_multi_dept",
+  "description": "ICU, ER, OR 등 여러 병동에 동시에 재고가 있는 케이스. recall_class1_icu와 input은 유사하지만, 다수 병동 동시 영향 시 priority/urgent 판단이 올바르게 집계되는지 검증하는 시나리오",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "midazolam",
+    "ndc": "00641601441",
+    "lot": "LOT-A",
+    "classification": "Class I",
+    "reason_for_recall": "Particulate matter contamination"
+  },
+  "expected": {
+    "review_type": "action_review",
+    "evidence_status": "sufficient",
+    "blocked_sentences": true,
+    "priority": "HIGH",
+    "urgent": true,
+    "final_status": "REVIEW_ROUTED"
+  }
+}

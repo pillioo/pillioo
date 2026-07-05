@@ -10,7 +10,9 @@ DATASET_COMMANDS = {
     "recalls": ["scripts.rag.openfda.fetch_recalls", "--clean"],
     "sop": ["scripts.rag.sop.generate_sop_documents"],
     "policy": ["scripts.rag.policy.generate_policy_documents"],
+    "chunks": ["scripts.rag.chunking.build_chunks", "--clean"],
 }
+EMBEDDING_COMMAND = ["scripts.rag.embedding.embed_chunks", "--clean"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +23,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--recalls", action="store_true", help="Generate openFDA recall notice documents.")
     parser.add_argument("--sop", action="store_true", help="Generate SOP documents.")
     parser.add_argument("--policy", action="store_true", help="Generate policy documents.")
+    parser.add_argument("--chunks", action="store_true", help="Generate chunked evidence JSONL.")
+    parser.add_argument("--embeddings", action="store_true", help="Generate embedded chunk JSONL.")
     return parser
 
 
@@ -30,11 +34,15 @@ def selected_datasets(args: argparse.Namespace) -> list[str]:
         for name in DATASET_COMMANDS
         if args.all or getattr(args, name)
     ]
+    if args.embeddings:
+        if "chunks" not in selected:
+            selected.append("chunks")
+        selected.append("embeddings")
     return selected or list(DATASET_COMMANDS)
 
 
 def run_dataset(name: str) -> None:
-    module, *module_args = DATASET_COMMANDS[name]
+    module, *module_args = EMBEDDING_COMMAND if name == "embeddings" else DATASET_COMMANDS[name]
     command = [sys.executable, "-m", module, *module_args]
     print(f"\n[RUN] {' '.join(command)}", flush=True)
     subprocess.run(command, check=True)

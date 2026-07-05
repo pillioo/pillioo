@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_class1_all_pass",
+  "description": "Class I recall, 모든 check 통과 → final_approval",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "vancomycin",
+    "ndc": "00703009801",
+    "lot": "LOT-D",
+    "classification": "Class I",
+    "reason_for_recall": "Sterility concerns"
+  },
+  "expected": {
+    "review_type": "final_approval",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": "HIGH",
+    "urgent": false,
+    "final_status": "REVIEW_ROUTED"
+  }
+}
