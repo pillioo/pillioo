@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -8,8 +9,12 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DATABASE_URL: str
 
+    # 추가된 부분: .env의 API 키를 받을 공간을 마련해준다.
+    OPENFDA_API_KEY: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_prefix = ""  # 접두사 없이 직접 매핑
+        extra = "ignore"
 
 settings = Settings()
