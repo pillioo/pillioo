@@ -10,6 +10,7 @@ from scripts.rag.embedding.validation import validate_collection_dimension, vali
 def make_embedded_record(**overrides: object) -> dict[str, object]:
     record: dict[str, object] = {
         "chunk_id": "chunk-1",
+        "chunk_index": 0,
         "embedding": [0.1, 0.2],
         "content": "body",
         "document_id": "doc-1",
@@ -40,6 +41,12 @@ def test_to_milvus_row_uses_filterable_ndc_array() -> None:
 
     assert row["ndc"] == ["12345-6789-01"]
     assert "ndc_json" not in row
+
+
+def test_to_milvus_row_includes_chunk_index() -> None:
+    row = to_milvus_row(make_embedded_record(chunk_index=3))
+
+    assert row["chunk_index"] == 3
 
 
 def test_to_milvus_row_uses_filterable_event_types_array() -> None:

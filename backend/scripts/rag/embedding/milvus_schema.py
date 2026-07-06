@@ -8,6 +8,7 @@ def create_evidence_schema(client, *, embedding_dim: int):
 
     schema = MilvusClient.create_schema(auto_id=False, enable_dynamic_field=False)
     schema.add_field(MilvusField.CHUNK_ID, DataType.VARCHAR, is_primary=True, max_length=VARCHAR_MAX[MilvusField.CHUNK_ID])
+    schema.add_field(MilvusField.CHUNK_INDEX, DataType.INT64)
     schema.add_field(MilvusField.EMBEDDING, DataType.FLOAT_VECTOR, dim=embedding_dim)
     schema.add_field(MilvusField.CONTENT, DataType.VARCHAR, max_length=VARCHAR_MAX[MilvusField.CONTENT])
     schema.add_field(MilvusField.DOCUMENT_ID, DataType.VARCHAR, max_length=VARCHAR_MAX[MilvusField.DOCUMENT_ID])
