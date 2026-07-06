@@ -1,5 +1,8 @@
 from sqlalchemy import Column, String
+from sqlalchemy.orm import relationship
+
 from app.db.base import TimeStampedModel
+
 
 class Ticket(TimeStampedModel):
     __tablename__ = "tickets"
@@ -21,7 +24,23 @@ class Ticket(TimeStampedModel):
     recall_number = Column(String, nullable=True)
     reason_for_recall = Column(String, nullable=True)
     product_description = Column(String, nullable=True)
-    
+
     # 4. 중복 및 상태 변경 감지(Diff Detector)용 핵심 데이터
-    openfda_id = Column(String, unique=True, index=True, nullable=True) # 중복 감지의 기준점
-    source_status = Column(String, nullable=True) # FDA 원본 상태 (ongoing 등) 보관용
+    openfda_id = Column(String, unique=True, index=True, nullable=True)
+    source_status = Column(String, nullable=True)
+
+    # P4 Relationships
+    approvals = relationship(
+        "Approval",
+        back_populates="ticket"
+    )
+
+    audit_logs = relationship(
+        "AuditLog",
+        back_populates="ticket"
+    )
+
+    report_versions = relationship(
+        "ReportVersion",
+        back_populates="ticket"
+    )
