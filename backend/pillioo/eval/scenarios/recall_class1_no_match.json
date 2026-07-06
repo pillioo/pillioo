@@ -1,0 +1,20 @@
+{
+  "scenario_id": "recall_class1_no_match",
+  "description": "Class I recall, 재고 없음 → no_impact_close",
+  "input_event": {
+    "event_type": "recall",
+    "drug_name": "cisplatin",
+    "ndc": "99999999999",
+    "lot": "LOT-Z",
+    "classification": "Class I",
+    "reason_for_recall": "Mislabeling"
+  },
+  "expected": {
+    "review_type": "no_impact_close",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": null,
+    "urgent": false,
+    "final_status": "CLOSED"
+  }
+}

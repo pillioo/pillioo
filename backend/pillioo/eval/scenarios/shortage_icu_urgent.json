@@ -1,0 +1,20 @@
+{
+  "scenario_id": "shortage_icu_urgent",
+  "description": "shortage, ICU 재고 3일치 이하 → urgent",
+  "input_event": {
+    "event_type": "shortage",
+    "drug_name": "midazolam",
+    "ndc": "00641601441",
+    "lot": null,
+    "classification": null,
+    "reason_for_recall": null
+  },
+  "expected": {
+    "review_type": "final_approval",
+    "evidence_status": "sufficient",
+    "blocked_sentences": false,
+    "priority": "HIGH",
+    "urgent": true,
+    "final_status": "REVIEW_ROUTED"
+  }
+}

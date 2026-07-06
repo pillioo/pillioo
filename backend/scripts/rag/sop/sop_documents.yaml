@@ -1,0 +1,881 @@
+- document_id: sop-recall-inventory-quarantine
+  sop_id: SOP-RECALL-001
+  title: Recall Inventory Quarantine SOP
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - drug recall
+  - affected inventory
+  - quarantine
+  - Class I recall
+  - Class II recall
+  purpose: |-
+    This procedure defines the operational steps for identifying and
+    quarantining inventory that may be affected by a drug recall. It is
+    intended to ensure that potentially affected stock is isolated from
+    clinical use while maintaining traceability of evidence, inventory
+    matches, and reviewer decisions.
+  trigger: |-
+    Use this SOP when a recall notice has been retrieved and the affected
+    product may exist in pharmacy inventory, automated dispensing cabinets,
+    emergency medication kits, procedural areas, or satellite medication
+    storage locations.
+  required_inputs:
+  - Recall notice with recall_number, classification, affected_product, and reason_for_recall.
+  - Inventory records with drug_name, NDC, lot, expiration_date, department, and quantity_on_hand.
+  - Evidence retrieval result containing recall_notice, policy, and SOP sources.
+  - Inventory match result identifying exact_ndc_match, fuzzy_name_match, or no_match.
+  procedure:
+  - Confirm that the recall notice source is available and cites the recall number.
+  - Review affected product description, NDC, lot information, and recall classification.
+  - Search inventory using exact NDC matching before using fuzzy drug-name matching.
+  - If the recall notice states all lots, treat all matching product inventory as potentially affected.
+  - Separate exact matches from possible fuzzy matches in the impact summary.
+  - Create a quarantine candidate list that includes department, quantity, NDC, lot, and source evidence.
+  - Route the candidate list to pharmacist review before marking inventory as quarantined.
+  - After approval, record quarantine status, reviewer, timestamp, and affected inventory items.
+  - If approval is rejected or evidence is insufficient, return the ticket to evidence review.
+  exception_handling:
+  - If NDC is missing, use drug name and product description matching but mark the match as uncertain.
+  - If lot information is malformed or unavailable, route to identity_review.
+  - If the affected product is stocked in ICU, ER, OR, or pediatric areas, escalate priority.
+  - If recall evidence conflicts with inventory data, do not close the ticket automatically.
+  completion_criteria:
+  - Recall notice evidence is cited.
+  - Inventory matching result is recorded.
+  - Quarantine candidates are reviewed by a pharmacist.
+  - Approval status is recorded before inventory status is changed.
+  - Audit log includes source_path, match_type, reviewer decision, and timestamp.
+- document_id: sop-affected-lot-verification
+  sop_id: SOP-RECALL-002
+  title: Affected Lot Verification SOP
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - affected lot
+  - lot verification
+  - recall code_info
+  - inventory match
+  purpose: |-
+    This procedure defines how lot numbers and recall code information
+    should be verified against local inventory records during recall
+    investigation. It prevents the workflow from treating malformed,
+    incomplete, or over-extracted lot values as confirmed operational
+    evidence.
+  trigger: |-
+    Use this SOP when a recall notice contains lot numbers, code information,
+    pedigree identifiers, expiration dates, or the phrase all lots.
+  required_inputs:
+  - Recall code_info and more_code_info fields when available.
+  - Inventory lot and expiration records.
+  - Product NDC or product description from the recall notice.
+  - Match confidence and match type from the inventory matching service.
+  - Recall source path and section used for lot extraction.
+  procedure:
+  - Extract recall lot, code, pedigree, and expiration information from the recall notice.
+  - Normalize lot values by removing punctuation and comparing case-insensitively.
+  - Check exact lot matches within inventory records associated with matching NDC or product name.
+  - If recall code_info states all lots, mark lot verification as broad-impact rather than missing.
+  - If lot data is partially available, document the uncertainty in the impact summary.
+  - Do not treat a single-character extraction result as a valid lot number.
+  - Do not infer no local impact solely because inventory lot metadata is empty.
+  - Route ambiguous lot matches to identity_review.
+  - Attach the recall source section and inventory match evidence to the ticket.
+  exception_handling:
+  - If lot information is absent but NDC matches exactly, route to pharmacist review.
+  - If lot information conflicts with product description, route to evidence_review.
+  - If inventory lot fields are empty, do not infer no impact from missing inventory metadata.
+  - If the extracted lot value is too short, malformed, or likely caused by parsing error, mark lot verification as ambiguous.
+  completion_criteria:
+  - Lot verification status is recorded as exact, broad-impact, ambiguous, or unavailable.
+  - All lot assumptions are cited from recall notice or inventory source.
+  - Ambiguous matches are not approved without human review.
+  - The audit trail includes recall source path, extracted lot value, normalized lot value, and match result.
+- document_id: sop-recall-notification-workflow
+  sop_id: SOP-RECALL-003
+  title: Recall Notification Workflow SOP
+  event_type: recall
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - recall notification
+  - department communication
+  - pharmacist approval
+  - patient safety
+  purpose: |-
+    This procedure defines how internal recall notifications should be
+    prepared, reviewed, and distributed to affected operational departments.
+    It ensures that generated communication remains evidence-based and
+    review-controlled.
+  trigger: |-
+    Use this SOP when recall evidence indicates confirmed or possible
+    inventory impact, or when department-facing communication is requested.
+  required_inputs:
+  - Recall notice and classification.
+  - Inventory impact assessment.
+  - Affected department list.
+  - Draft notification text with citations.
+  - Approval status from pharmacist or medication safety officer.
+  procedure:
+  - Generate an internal notification draft only after evidence retrieval is complete.
+  - Include affected product, recall number, classification, and reason for recall.
+  - Separate confirmed inventory impact from possible or pending matches.
+  - Avoid patient-facing instructions unless compliance review is required and recorded.
+  - Route the draft to pharmacist review when the recall is Class I or has confirmed inventory impact.
+  - Record reviewer edits and approval status before distribution.
+  - After approval, distribute only the approved internal summary to affected departments.
+  - Archive the final notification text and evidence citations in the ticket audit trail.
+  exception_handling:
+  - If evidence is insufficient, generate a review request rather than a final notification.
+  - If affected departments are unknown, route to inventory review.
+  - If the draft contains disposal, substitution, or patient notification language, route to action_review.
+  completion_criteria:
+  - Notification draft includes source citations.
+  - Reviewer approval is recorded.
+  - Final text is stored with report version tag.
+  - Distribution target departments are recorded.
+- document_id: sop-no-impact-recall-closure
+  sop_id: SOP-RECALL-004
+  title: No Impact Recall Closure SOP
+  event_type: recall
+  priority: LOW
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - no inventory impact
+  - no_match
+  - recall closure
+  - sufficient evidence
+  purpose: |-
+    This procedure defines how a recall ticket may be closed when no local
+    inventory impact is found after evidence retrieval and inventory
+    matching.
+  trigger: |-
+    Use this SOP when recall evidence is retrieved and inventory matching
+    returns no exact NDC match, no lot match, and no high-confidence fuzzy
+    match.
+  required_inputs:
+  - Recall notice evidence.
+  - Inventory match result showing no_match.
+  - Policy evidence for no-impact closure.
+  - Evidence sufficiency result.
+  procedure:
+  - Confirm that recall_notice evidence is present.
+  - Confirm that inventory matching checked exact NDC and lot fields when available.
+  - Confirm that no active inventory item matches the affected product.
+  - Check that evidence_status is sufficient.
+  - Generate a no-impact closure summary with citations.
+  - Record the closure reason and inventory matching result.
+  - Do not use no-impact closure if evidence is missing or fuzzy matches remain unresolved.
+  exception_handling:
+  - If recall notice lacks product identifiers, route to evidence_review.
+  - If fuzzy name matches exist, route to identity_review.
+  - If the affected drug is high-alert, consider pharmacist review even when no impact is found.
+  completion_criteria:
+  - No-match result is recorded.
+  - Evidence sufficiency is confirmed.
+  - Closure summary cites recall and inventory evidence.
+  - Ticket status may be moved to closed.
+- document_id: sop-shortage-inventory-assessment
+  sop_id: SOP-SHORTAGE-001
+  title: Shortage Inventory Assessment SOP
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - drug shortage
+  - inventory assessment
+  - days of supply
+  - critical medication
+  purpose: |-
+    This procedure defines how inventory risk should be assessed during a
+    drug shortage event. It supports consistent estimation of operational
+    impact before any allocation or mitigation plan is drafted.
+  trigger: |-
+    Use this SOP when a shortage event record indicates current or anticipated
+    limited supply of a medication stocked by the institution.
+  required_inputs:
+  - Shortage event record with affected drug, severity, expected duration, and mitigation notes.
+  - Current inventory quantity by department or storage location.
+  - Recent usage estimate or average daily consumption.
+  - Medication criticality and department priority.
+  procedure:
+  - Confirm the affected drug name and normalize it against inventory naming conventions.
+  - Retrieve current on-hand inventory by department and storage location.
+  - Estimate days of supply using recent usage data and current quantity.
+  - Identify critical departments such as ICU, ER, OR, oncology, and infectious disease services.
+  - Separate confirmed shortage impact from anticipated shortage risk.
+  - Flag high-risk medications or drugs without readily available alternatives.
+  - Prepare an inventory risk summary for pharmacist review.
+  - Do not recommend allocation changes until approval is recorded.
+  exception_handling:
+  - If usage data is unavailable, mark days-of-supply estimate as uncertain.
+  - If shortage severity is unknown, route to evidence_review.
+  - If the medication is used in emergency or critical care workflows, escalate priority.
+  completion_criteria:
+  - Affected drug is normalized.
+  - Inventory quantity and timestamp are recorded.
+  - Days-of-supply assumption is documented.
+  - Risk summary is routed to pharmacist review.
+- document_id: sop-shortage-substitution-review
+  sop_id: SOP-SHORTAGE-002
+  title: Shortage Substitution Review SOP
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - therapeutic substitution
+  - shortage mitigation
+  - alternative medication
+  - pharmacist review
+  purpose: |-
+    This procedure defines how substitution-related language should be
+    handled during shortage response drafting.
+  trigger: |-
+    Use this SOP when a shortage response draft mentions an alternative
+    medication, alternative strength, alternative route, or conservation
+    strategy that may affect clinical medication use.
+  required_inputs:
+  - Shortage event record.
+  - Affected medication label evidence when available.
+  - Policy evidence for therapeutic substitution approval.
+  - Draft response text.
+  - Pharmacist review decision.
+  procedure:
+  - Scan the draft response for substitution, interchange, conversion, or alternative therapy language.
+  - Retrieve policy evidence governing therapeutic substitution approval.
+  - Retrieve label evidence for the affected medication when relevant.
+  - Mark substitution statements as review-required unless explicitly approved.
+  - Route the ticket to action_review before final approval.
+  - Do not present substitution language as final instruction before pharmacist approval.
+  - After review, preserve the approved wording and reviewer decision.
+  exception_handling:
+  - If no approved substitution protocol exists, remove final substitution language from the draft.
+  - If the alternative differs by route, dose, formulation, or concentration, require pharmacist review.
+  - If the drug is high-alert, require final approval before communication.
+  completion_criteria:
+  - Substitution language has been detected or ruled out.
+  - Policy evidence is cited.
+  - Reviewer decision is recorded.
+  - Final communication does not exceed approved wording.
+- document_id: sop-shortage-allocation-review
+  sop_id: SOP-SHORTAGE-003
+  title: Shortage Allocation Review SOP
+  event_type: shortage
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - shortage allocation
+  - limited supply
+  - department priority
+  - pharmacist approval
+  purpose: |-
+    This procedure defines how allocation changes should be reviewed
+    during medication shortage response.
+  trigger: |-
+    Use this SOP when a shortage event may require prioritization of
+    limited supply across departments or care settings.
+  required_inputs:
+  - Shortage event record.
+  - Inventory quantity and usage estimate.
+  - Department demand profile.
+  - Policy evidence for shortage allocation.
+  - Draft allocation summary.
+  procedure:
+  - Identify available inventory and expected usage by department.
+  - Estimate days of supply for critical locations.
+  - Identify departments where medication access is safety-critical.
+  - Prepare an allocation review summary without issuing final instructions.
+  - Route the allocation plan to pharmacist review.
+  - Record approved allocation decision and effective date.
+  - Communicate only approved allocation language.
+  exception_handling:
+  - If inventory data is stale, request updated inventory snapshot.
+  - If clinical priority cannot be determined, route to pharmacist review.
+  - If substitution is proposed, route to action_review.
+  completion_criteria:
+  - Allocation risk summary is generated.
+  - Reviewer decision is recorded.
+  - Final allocation language is approved.
+  - Audit trail includes inventory assumptions.
+- document_id: sop-shortage-department-impact-summary
+  sop_id: SOP-SHORTAGE-004
+  title: Shortage Department Impact Summary SOP
+  event_type: shortage
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - shortage
+  - department impact
+  - shortage summary
+  - ICU
+  - ER
+  - OR
+  purpose: |-
+    This procedure defines how department-level shortage impact should
+    be summarized for operational review.
+  trigger: |-
+    Use this SOP when a shortage affects medications stocked or used by
+    one or more departments.
+  required_inputs:
+  - Affected drug.
+  - Shortage severity.
+  - Inventory by department.
+  - Usage estimate by department.
+  - Policy and SOP evidence.
+  procedure:
+  - Identify departments with current stock or recent use of the affected drug.
+  - Group departments by criticality such as ICU, ER, OR, oncology, or general ward.
+  - Estimate department-level risk using quantity and usage assumptions.
+  - Summarize confirmed impact separately from anticipated risk.
+  - Avoid recommending allocation changes without pharmacist approval.
+  - Attach citations from shortage event and policy evidence.
+  exception_handling:
+  - If department usage is unavailable, mark impact estimate as uncertain.
+  - If shortage duration is unknown, route to evidence_review.
+  - If high-risk departments are affected, route to final_approval.
+  completion_criteria:
+  - Department impact summary is generated.
+  - Uncertainty is explicitly stated.
+  - High-risk departments are identified.
+  - Reviewer route is selected.
+- document_id: sop-label-update-impact-review
+  sop_id: SOP-LABEL-001
+  title: Label Update Impact Review SOP
+  event_type: label_update
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - label update
+  - warnings
+  - contraindications
+  - dosage
+  - drug interactions
+  purpose: |-
+    This procedure defines how medication label updates should be reviewed
+    for operational and safety impact.
+  trigger: |-
+    Use this SOP when a new or updated label document is available and the
+    change may affect warnings, contraindications, dosage, adverse reactions,
+    drug interactions, storage, or patient counseling information.
+  required_inputs:
+  - Label evidence with source_record_id and effective_time.
+  - Relevant label sections and source paths.
+  - Policy evidence for label update review.
+  - Affected drug and departments when known.
+  procedure:
+  - Retrieve the label document for the affected drug.
+  - Prioritize warnings, contraindications, dosage_and_administration, adverse_reactions, and drug_interactions sections.
+  - Identify whether the label update affects high-alert medication handling.
+  - Summarize the operational impact using cited label sections.
+  - Separate label text from clinical interpretation.
+  - Route clinically significant summaries to pharmacist review.
+  - Do not distribute department-facing instructions until final approval is recorded.
+  exception_handling:
+  - If the required label section is missing, route to evidence_review.
+  - If the label evidence conflicts with policy evidence, route to evidence_review.
+  - If the update includes boxed warning language, escalate priority.
+  completion_criteria:
+  - Relevant label sections are cited.
+  - Operational impact summary is drafted.
+  - Pharmacist review status is recorded when required.
+  - Final summary preserves source_record_id and effective_time.
+- document_id: sop-label-warning-escalation
+  sop_id: SOP-LABEL-002
+  title: Label Warning Escalation SOP
+  event_type: label_update
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - warnings
+  - boxed warning
+  - contraindications
+  - label update
+  purpose: |-
+    This procedure defines how warning-related label updates should be
+    escalated for pharmacist review.
+  trigger: |-
+    Use this SOP when retrieved label evidence contains boxed_warning,
+    warnings, contraindications, severe adverse reaction, or serious
+    drug interaction content.
+  required_inputs:
+  - Label evidence sections.
+  - Effective time and source_record_id.
+  - Affected drug name.
+  - Policy evidence for label update review.
+  - Draft label impact summary.
+  procedure:
+  - Retrieve warning, contraindication, adverse reaction, and drug interaction sections.
+  - Identify whether boxed warning or life-threatening risk language is present.
+  - Summarize the label text without adding unsupported clinical interpretation.
+  - Identify affected departments when route or use setting is known.
+  - Route high-risk label updates to pharmacist review.
+  - Do not distribute department-facing instructions before final approval.
+  exception_handling:
+  - If warning sections are missing, route to evidence_review.
+  - If label text is ambiguous, avoid final interpretation.
+  - If high-alert medications are involved, require final approval.
+  completion_criteria:
+  - Relevant label sections are cited.
+  - Risk language is summarized cautiously.
+  - Review route is selected.
+  - Approved summary can be distributed only after approval.
+- document_id: sop-label-storage-handling-review
+  sop_id: SOP-LABEL-003
+  title: Label Storage and Handling Review SOP
+  event_type: label_update
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - label_update
+  - storage and handling
+  - how supplied
+  - label update
+  - inventory operations
+  purpose: |-
+    This procedure defines how storage and handling label information
+    should be reviewed for operational impact.
+  trigger: |-
+    Use this SOP when label evidence includes how_supplied,
+    storage_and_handling, temperature, packaging, or container handling
+    language.
+  required_inputs:
+  - Label storage or handling section.
+  - Inventory storage location metadata.
+  - Affected drug and product NDC.
+  - Policy evidence for label update review.
+  procedure:
+  - Retrieve how_supplied and storage_and_handling sections when available.
+  - Identify storage temperature, container, packaging, and handling requirements.
+  - Compare label handling information with current inventory storage assumptions.
+  - Draft an operational impact summary with citations.
+  - Route changes affecting storage practice to pharmacist review.
+  - Do not issue final storage instructions without approval.
+  exception_handling:
+  - If storage section is missing, route to evidence_review.
+  - If current storage metadata is unavailable, mark operational impact as uncertain.
+  - If storage change affects high-risk areas, route to final_approval.
+  completion_criteria:
+  - Storage and handling evidence is cited.
+  - Operational impact is summarized.
+  - Uncertainty is recorded.
+  - Approval status is captured before final communication.
+- document_id: sop-high-alert-medication-handling
+  sop_id: SOP-SAFETY-001
+  title: High-Alert Medication Handling SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - high-alert medication
+  - warfarin
+  - heparin
+  - insulin
+  - magnesium sulfate
+  - potassium chloride
+  purpose: |-
+    This procedure defines additional safeguards for recall, shortage, or
+    label update events involving high-alert medications.
+  trigger: |-
+    Use this SOP when the affected medication is a high-alert medication or
+    when the event may affect emergency, critical care, anticoagulation,
+    insulin, electrolyte, or procedural medication workflows.
+  required_inputs:
+  - Affected drug name and medication class.
+  - Event evidence such as recall notice, shortage event details, or label section.
+  - Policy evidence for high-alert medication review.
+  - Draft response text and safety check result.
+  procedure:
+  - Identify whether the medication appears in the high-alert medication list.
+  - Retrieve event-specific evidence and applicable policy evidence.
+  - Check whether generated text includes direct medical instruction.
+  - Block or soften unsupported operational recommendations.
+  - Route the case to pharmacist final approval when safety-critical action is proposed.
+  - Retain safety check results and blocked action categories in the audit trail.
+  exception_handling:
+  - If high-alert status is uncertain, route to pharmacist review.
+  - If the generated draft includes dosing or substitution language, route to action_review.
+  - If evidence is insufficient, do not approve final communication.
+  completion_criteria:
+  - High-alert status is recorded.
+  - Safety check result is retained.
+  - Unsafe action categories are blocked or routed to review.
+  - Final approval is recorded before closure.
+- document_id: sop-safety-check-before-approval
+  sop_id: SOP-SAFETY-002
+  title: Safety Check Before Approval SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - safety check
+  - blocked category
+  - unsafe action
+  - approval routing
+  purpose: |-
+    This procedure defines how generated drafts should be checked for
+    unsafe action categories before they are routed for approval or
+    communication.
+  trigger: |-
+    Use this SOP whenever a draft report, checklist, or operational
+    summary is generated.
+  required_inputs:
+  - Generated draft text.
+  - Applicable policy evidence.
+  - Blocked category definitions.
+  - Evidence sufficiency result.
+  - Approval requirements.
+  procedure:
+  - Scan generated text for direct medical instruction.
+  - Scan generated text for substitution recommendations.
+  - Scan generated text for disposal instructions.
+  - Scan generated text for certainty claims without approval.
+  - Flag unsafe sentences and associate them with blocked categories.
+  - Rewrite or soften unsafe language when possible.
+  - Route remaining unsafe action content to action_review.
+  - Do not route to final approval until safety check is complete.
+  exception_handling:
+  - If blocked categories cannot be resolved automatically, route to action_review.
+  - If the draft contains patient-facing language, require compliance or pharmacist review.
+  - If evidence is insufficient and the draft is confident, route to evidence_review.
+  completion_criteria:
+  - Safety check result is recorded.
+  - Blocked categories are recorded.
+  - Unsafe language is removed, softened, or routed to review.
+  - Draft may proceed to approval routing.
+- document_id: sop-pharmacist-approval-checklist
+  sop_id: SOP-HITL-001
+  title: Pharmacist Approval Checklist SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: HIGH
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - HITL
+  - pharmacist approval
+  - final approval
+  - safety-critical decision
+  purpose: |-
+    This procedure defines the checklist a pharmacist should review before
+    approving a safety-critical recall, shortage, or label update ticket.
+  trigger: |-
+    Use this SOP when the workflow routes a ticket to final_approval,
+    action_review, or evidence_review.
+  required_inputs:
+  - Ticket state and current workflow step.
+  - Evidence sufficiency result.
+  - Top evidence chunks and citations.
+  - Inventory impact assessment.
+  - Safety check result and blocked categories.
+  - Draft report version.
+  procedure:
+  - Confirm that required evidence sources were retrieved or marked missing.
+  - Review whether evidence_status matches missing_sources.
+  - Check whether inventory impact is confirmed, possible, or absent.
+  - Review generated draft statements for unsupported certainty.
+  - Confirm that unsafe action categories have been removed or routed appropriately.
+  - Approve, reject, or request revision with a recorded reason.
+  - Ensure that the final report version matches the approved content.
+  exception_handling:
+  - If evidence is insufficient, reject final approval and route to evidence_review.
+  - If inventory identity is uncertain, route to identity_review.
+  - If unsafe action language remains, route to action_review.
+  completion_criteria:
+  - Approval status is recorded.
+  - Reviewer decision reason is retained.
+  - Report version tag is recorded.
+  - Ticket may proceed only after required approval is complete.
+- document_id: sop-evidence-insufficiency-escalation
+  sop_id: SOP-EVIDENCE-001
+  title: Evidence Insufficiency Escalation SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - insufficient evidence
+  - missing source
+  - coverage score
+  - evidence review
+  purpose: |-
+    This procedure defines how to handle tickets when required evidence
+    sources are missing or retrieval quality is insufficient.
+  trigger: |-
+    Use this SOP when sufficiency check returns insufficient, when required
+    document types are missing, or when top retrieved chunks do not support
+    the requested workflow decision.
+  required_inputs:
+  - Required source types.
+  - Found source types.
+  - Missing source types.
+  - Coverage score.
+  - Top retrieved chunks and similarity scores.
+  procedure:
+  - Compare required_sources against found_sources.
+  - Confirm that missing_sources is consistent with evidence_status.
+  - Identify whether the missing source is recall_notice, label, policy, or SOP.
+  - Generate a cautious summary stating which evidence is missing.
+  - Do not generate confident operational conclusions when evidence is insufficient.
+  - Route the ticket to evidence_review.
+  - Record coverage_score and missing_sources in the audit trail.
+  exception_handling:
+  - If retrieved chunks are relevant but from the wrong document_type, keep evidence_status insufficient.
+  - If similarity scores are low, request retrieval review rather than final approval.
+  - If policy evidence is present but event-specific evidence is missing, do not infer event facts.
+  completion_criteria:
+  - Missing evidence types are recorded.
+  - Evidence review route is selected.
+  - Draft output explicitly states evidence limitations.
+  - Ticket is not marked approved or closed until the gap is resolved or accepted by a reviewer.
+- document_id: sop-rag-quality-check
+  sop_id: SOP-RAG-002
+  title: RAG Quality Check SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: MEDIUM
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - rag_quality_check
+  - retrieval quality
+  - evidence chunks
+  - coverage score
+  purpose: |-
+    This procedure defines how retrieved evidence chunks should be
+    checked before they are used for draft generation or workflow
+    decisions.
+  trigger: |-
+    Use this SOP after evidence retrieval and before sufficiency check
+    or draft generation.
+  required_inputs:
+  - Top retrieved evidence chunks.
+  - Similarity scores.
+  - Required document types.
+  - Target sections from evidence routing.
+  - Source paths and chunk indexes.
+  procedure:
+  - Check whether retrieved chunks include the required document types.
+  - Check whether top chunks come from relevant sections for the event type.
+  - Calculate coverage based on required source types and found source types.
+  - Flag low score gaps when top results are weak or unrelated.
+  - Detect whether multiple chunks come from the same document when source diversity is required.
+  - Return retrieval quality signals to sufficiency check.
+  - Store retrieval diagnostics in the audit log.
+  exception_handling:
+  - If no chunks are retrieved, mark evidence as insufficient.
+  - If only policy evidence is found for an event-specific question, mark event evidence as missing.
+  - If retrieved chunks conflict, route to evidence_review.
+  completion_criteria:
+  - Retrieved source types are recorded.
+  - Coverage score is calculated.
+  - Low-confidence retrieval is flagged.
+  - Sufficiency check can use the quality result.
+- document_id: sop-draft-report-generation
+  sop_id: SOP-REPORT-001
+  title: Draft Report Generation SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - draft report
+  - evidence citations
+  - impact summary
+  - review required
+  purpose: |-
+    This procedure defines how draft reports should be generated from
+    evidence retrieval, inventory impact, and policy decision results.
+  trigger: |-
+    Use this SOP after evidence sufficiency check and before safety
+    check or human review routing.
+  required_inputs:
+  - Ticket event summary.
+  - Inventory impact assessment.
+  - Evidence chunks and citations.
+  - Sufficiency check result.
+  - Applicable policy and SOP evidence.
+  procedure:
+  - Generate a draft report that clearly states the event type and affected drug.
+  - Include confirmed inventory impact separately from possible or uncertain impact.
+  - Cite recall, label, policy, and SOP evidence for safety-critical claims.
+  - State missing evidence explicitly when evidence_status is insufficient.
+  - Avoid final operational wording before approval.
+  - Attach draft version tag to the report.
+  - Send the draft to safety check before review routing.
+  exception_handling:
+  - If evidence is insufficient, generate a limited draft that requests evidence review.
+  - If inventory impact is unknown, avoid no-impact closure language.
+  - If citations are missing, route back to evidence retrieval.
+  completion_criteria:
+  - Draft report is generated.
+  - Citations are attached.
+  - Report version is recorded.
+  - Draft is ready for safety check.
+- document_id: sop-audit-log-review
+  sop_id: SOP-AUDIT-001
+  title: Audit Log Review SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: MEDIUM
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - audit log
+  - workflow traceability
+  - evidence citation
+  - approval decision
+  purpose: |-
+    This procedure defines how audit logs should be reviewed for completeness
+    during evidence-driven medication operations workflows.
+  trigger: |-
+    Use this SOP when a ticket reaches review, approval, rejection, closure,
+    or when an auditor requests reconstruction of the workflow decision.
+  required_inputs:
+  - Workflow step history.
+  - Evidence citations and source paths.
+  - Inventory match result.
+  - Safety check result.
+  - Approval or rejection decision.
+  - Draft and final report versions.
+  procedure:
+  - Review whether each workflow step has a timestamp and structured payload.
+  - Confirm that evidence citations include source_path, section, and chunk_index.
+  - Confirm that inventory matching includes match_type and impact result.
+  - Check that safety check results include blocked categories when applicable.
+  - Confirm that approval decisions include reviewer identity, status, and timestamp.
+  - Flag tickets with missing audit fields before final closure.
+  exception_handling:
+  - If a required audit field is missing, route the ticket to audit review.
+  - If final report content differs from approved draft, require re-approval.
+  - If citations are missing, route to evidence_review.
+  completion_criteria:
+  - Audit trail contains workflow steps, evidence citations, safety checks, and review decisions.
+  - Any missing audit fields are resolved or explicitly documented.
+  - Ticket is eligible for closure only when audit trail is complete.
+- document_id: sop-recall-evidence-routing
+  sop_id: SOP-RAG-001
+  title: Recall Evidence Routing SOP
+  event_type: recall
+  priority: MEDIUM
+  requires_human_approval: false
+  applies_to:
+  - recall
+  - evidence routing
+  - recall_notice
+  - policy retrieval
+  - SOP retrieval
+  purpose: |-
+    This procedure defines how evidence retrieval should be routed for
+    recall workflows before draft generation or policy aggregation.
+  trigger: |-
+    Use this SOP when a recall ticket has been created and the system
+    needs to determine which document types and sections should be
+    retrieved.
+  required_inputs:
+  - Event type set to recall.
+  - Normalized drug name when available.
+  - Recall classification when available.
+  - Inventory match result when available.
+  - Configured event-to-document-type routing map.
+  procedure:
+  - Set target document types to recall_notice, policy, and SOP.
+  - Prioritize recall sections such as affected_product, reason_for_recall, code_info, and distribution_pattern.
+  - Prioritize policy sections such as escalation_criteria, approval_requirements, and prohibited_actions.
+  - Prioritize SOP sections such as procedure, exception_handling, review_routing, and completion_criteria.
+  - If inventory impact is confirmed, increase priority of quarantine and approval SOP evidence.
+  - If recall classification is Class I, include high-alert and final approval policy evidence.
+  - Return target document types and target sections to the retrieval step.
+  exception_handling:
+  - If event type is missing, route to evidence_review.
+  - If document routing configuration is unavailable, use default recall routing.
+  - If no recall_notice is found, keep policy and SOP evidence but mark event-specific evidence as missing.
+  completion_criteria:
+  - Target document types are selected.
+  - Target sections are selected.
+  - Routing result is stored in the ticket audit trail.
+  - Missing event-specific evidence can be detected during sufficiency check.
+- document_id: sop-inventory-match-review
+  sop_id: SOP-INVENTORY-001
+  title: Inventory Match Review SOP
+  event_type: recall
+  event_types: ["recall", "shortage", "label_update"]
+  section_profiles: ["recall", "shortage", "label_update"]
+  priority: MEDIUM
+  requires_human_approval: true
+  applies_to:
+  - recall
+  - shortage
+  - label_update
+  - inventory match
+  - exact_ndc_match
+  - fuzzy_name_match
+  - no_match
+  purpose: |-
+    This procedure defines how inventory match results should be reviewed
+    before impact assessment or closure. It ensures that exact identifier
+    matches, uncertain fuzzy matches, and no-impact conclusions are handled
+    with the correct review route.
+  trigger: |-
+    Use this SOP after the inventory service returns a match result for
+    a recall, shortage, or label update ticket.
+  required_inputs:
+  - Inventory match type.
+  - Matched inventory items.
+  - NDC, lot, department, and quantity fields.
+  - Recall or event evidence.
+  - Match confidence when available.
+  procedure:
+  - Review exact NDC matches before fuzzy drug-name matches.
+  - Review lot matches when lot information is available.
+  - Separate confirmed impact from possible impact.
+  - Treat fuzzy_name_match as uncertain unless supported by additional identifiers.
+  - Use no_match only when exact and high-confidence fuzzy matching are both negative.
+  - Route uncertain matches to identity_review.
+  - Record match type and matched fields in the audit log.
+  exception_handling:
+  - If NDC is missing from recall evidence, avoid exact no-impact conclusions.
+  - If inventory metadata is incomplete, route to identity_review.
+  - If high-alert medication inventory is possibly affected, route to pharmacist review.
+  completion_criteria:
+  - Match type is recorded.
+  - Confirmed and possible impact are separated.
+  - Uncertain matches are routed appropriately.
+  - Impact assessment can proceed.
