@@ -28,9 +28,20 @@ class EventNormalized(BaseModel):
     # recall_number은 "FDA 도메인 용어로 참조할 때 쓰는 필드"이다.
     # 다운스트림(ticket, RAG)이 내부 구현 디테일(event_id)에 의존하지 않고
     # 도메인 이름으로 접근할 수 있게 하기 위해 중복이어도 별도 필드로 유지한다.
-    recall_number: str = Field(..., description="Raw FDA recall number (same value as event_id).")
-    product_description: str = Field(..., description="Original, unnormalized product description text.")
+    recall_number: str = Field(description="Raw FDA recall number (same value as event_id).")
+    product_description: str = Field(description="Original, unnormalized product description text.")
     reason_for_recall: Optional[str] = Field(None, description="FDA-provided reason for recall.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_fda_handoff_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+
+        values = dict(data)
+        values.setdefault("recall_number", values.get("event_id"))
+        values.setdefault("product_description", values.get("drug_name"))
+        return values
 
     @field_validator("ndc")
     @classmethod

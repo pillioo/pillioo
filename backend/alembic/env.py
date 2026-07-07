@@ -9,6 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
 from app.core.config import settings
+from app.db.base import Base
 import app.db.models as db_models
 
 config = context.config
@@ -21,7 +22,7 @@ config.set_main_option(
     settings.DATABASE_URL,
 )
 
-target_metadata = db_models.Ticket.metadata
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
