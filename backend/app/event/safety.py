@@ -8,8 +8,13 @@ Called by Orchestrator after draft generation.
 Returns SafetyCheckResult with blocked sentences and revised draft.
 
 Language support:
-    ko: Korean substring matching
-    en: English regex matching (handles morphological variants)
+    both: ko + en 둘 다 검사 (기본값 — 언어 혼용 대응)
+    ko: Korean substring matching only
+    en: English regex matching only (handles morphological variants)
+
+Bilingual by design:
+    Draft output may mix Korean and English regardless of output language setting.
+    Always check both patterns to avoid missed unsafe expressions.
 """
 
 import re
@@ -18,7 +23,7 @@ from app.schemas.common import BlockedCategory
 from app.schemas.event import BlockedSentence, SafetyCheckResult
 
 
-REPLACEMENT = "담당 약사 확인 후 조치하세요."
+REPLACEMENT = "Please consult the pharmacist before taking action."
 
 # ──────────────────────────────────────────────
 # 한국어 패턴 (substring matching)
@@ -42,6 +47,7 @@ KO_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
         "복용 중단",
         "복용을 멈추",
         "복용을 금지",
+        "복용하지 마세요",
         # 사용 중단
         "사용 중단",
         "사용을 중단",
@@ -87,6 +93,7 @@ KO_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
         "약물로 변경",
         "제품으로 변경",
         "제제로 변경",
+        "대체약으로 변경",
         "변경하세요",
         "변경 바랍니다",
         "변경해 주세요",
@@ -199,6 +206,7 @@ EN_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
         r'\bwithhold\b',
         r'\bimmediately\s+stop\b',
         r'\bimmediately\s+discontinue\b',
+        r'\bstop\s+administration\s+immediately\b',
     ],
     BlockedCategory.SUBSTITUTION_RECOMMENDATION: [
         # replace/substitute
@@ -213,6 +221,7 @@ EN_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
         r'\balternative\s+medication\b',
         r'\balternative\s+drug\b',
         r'\balternate\s+therapy\b',
+        r'\breplace\s+with\s+another\b',
     ],
     BlockedCategory.DISPOSAL_INSTRUCTION: [
         # discard/dispose
@@ -226,6 +235,7 @@ EN_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
         r'\bquarantine\s+and\s+destroy\b',
         r'\bimmediately\s+discard\b',
         r'\bimmediately\s+dispose\b',
+        r'\bdiscard\s+the\s+affected\b',
     ],
     BlockedCategory.CERTAINTY_WITHOUT_APPROVAL: [
         # safe to use
@@ -251,7 +261,7 @@ EN_UNSAFE_PATTERNS: dict[BlockedCategory, list[str]] = {
 
 def detect_category(
     sentence: str,
-    lang: str = "ko",
+    lang: str = "both",
 ) -> BlockedCategory | None:
     """
     문장이 어떤 위험 카테고리에 해당하는지 판단.
@@ -259,20 +269,21 @@ def detect_category(
 
     Args:
         sentence: 검사할 문장
-        lang: 언어 ("ko" 또는 "en")
-            - ko: substring matching (한국어 어미 변화 고려)
-            - en: regex matching (영어 형태소 변화 대응)
+        lang: 언어 ("both" 기본값)
+            - both: ko + en 둘 다 검사 (언어 혼용 대응)
+            - ko: 한국어 substring 매칭만
+            - en: 영어 regex 매칭만
 
     Returns:
         BlockedCategory | None
     """
-    if lang == "ko":
+    if lang in ("both", "ko"):
         for category, patterns in KO_UNSAFE_PATTERNS.items():
             for pattern in patterns:
                 if pattern in sentence:
                     return category
 
-    elif lang == "en":
+    if lang in ("both", "en"):
         for category, patterns in EN_UNSAFE_PATTERNS.items():
             for pattern in patterns:
                 if re.search(pattern, sentence, re.IGNORECASE):
@@ -286,9 +297,6 @@ def scan_evidence_sentence(sentence: str) -> BlockedCategory | None:
     영어 evidence 문서에서 단일 문장을 검사.
     파이프라인 [4]→[5] 지점 (Evidence Retrieval → Sufficiency Check) 에서 호출.
 
-    RAG에서 가져온 영어 문서 청크 안에 unsafe 표현이 있는지 확인.
-    있으면 해당 카테고리 반환, 없으면 None.
-
     Args:
         sentence: 영어 evidence 문서의 단일 문장
 
@@ -299,7 +307,7 @@ def scan_evidence_sentence(sentence: str) -> BlockedCategory | None:
 
 
 # ──────────────────────────────────────────────
-# Draft safety check (Korean draft)
+# Draft safety check
 # ──────────────────────────────────────────────
 
 def _find_sentence_spans(text: str) -> list[tuple[int, int]]:
@@ -313,15 +321,19 @@ def _find_sentence_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
-def draft_safety_check(draft_text: str) -> SafetyCheckResult:
+def draft_safety_check(draft_text: str, lang: str = "both") -> SafetyCheckResult:
     """
-    보고서 초안(한국어)을 문장 단위로 검사해서 위험 문장만 교체.
+    보고서 초안을 문장 단위로 검사해서 위험 문장만 교체.
     위험하지 않은 문장과 원본 줄바꿈/공백은 그대로 보존.
 
     Orchestrator가 draft 생성 후 이 함수를 호출.
 
     Args:
-        draft_text: LLM이 생성한 보고서 초안 전체 텍스트 (한국어)
+        draft_text: LLM이 생성한 보고서 초안 전체 텍스트
+        lang: 언어 ("both" 기본값 — ko/en 둘 다 검사)
+            - both: 언어 혼용 대응 (기본값)
+            - ko: 한국어만 검사 (명시적으로 한국어 전용일 때)
+            - en: 영어만 검사 (명시적으로 영어 전용일 때)
 
     Returns:
         SafetyCheckResult:
@@ -335,7 +347,7 @@ def draft_safety_check(draft_text: str) -> SafetyCheckResult:
 
     for start, end in reversed(spans):
         sentence = draft_text[start:end]
-        category = detect_category(sentence, lang="ko")
+        category = detect_category(sentence, lang=lang)
 
         if category:
             blocked_sentences.insert(
