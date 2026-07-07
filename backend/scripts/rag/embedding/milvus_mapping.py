@@ -57,6 +57,7 @@ def to_milvus_row(record: dict[str, Any], *, embedding_dim: int | None = None) -
     )
     return {
         MilvusField.CHUNK_ID: chunk_id,
+        MilvusField.CHUNK_INDEX: int(record[MilvusField.CHUNK_INDEX]),
         MilvusField.EMBEDDING: record[MilvusField.EMBEDDING],
         MilvusField.CONTENT: truncate(record[MilvusField.CONTENT], VARCHAR_MAX[MilvusField.CONTENT], field=MilvusField.CONTENT, chunk_id=chunk_id),
         MilvusField.DOCUMENT_ID: truncate(record[MilvusField.DOCUMENT_ID], VARCHAR_MAX[MilvusField.DOCUMENT_ID], field=MilvusField.DOCUMENT_ID, chunk_id=chunk_id),

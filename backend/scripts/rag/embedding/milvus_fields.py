@@ -3,6 +3,7 @@ from __future__ import annotations
 
 class MilvusField:
     CHUNK_ID = "chunk_id"
+    CHUNK_INDEX = "chunk_index"
     EMBEDDING = "embedding"
     CONTENT = "content"
     DOCUMENT_ID = "document_id"
@@ -56,6 +57,7 @@ ARRAY_MAX = {
 
 OUTPUT_FIELDS = [
     MilvusField.CHUNK_ID,
+    MilvusField.CHUNK_INDEX,
     MilvusField.CONTENT,
     MilvusField.DOCUMENT_ID,
     MilvusField.DOCUMENT_TYPE,

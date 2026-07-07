@@ -7,6 +7,7 @@ from scripts.rag.embedding.milvus_fields import OUTPUT_FIELDS, MilvusField
 
 REQUIRED_EMBEDDED_FIELDS = [
     MilvusField.CHUNK_ID,
+    MilvusField.CHUNK_INDEX,
     MilvusField.EMBEDDING,
     MilvusField.CONTENT,
     MilvusField.DOCUMENT_ID,
