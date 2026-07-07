@@ -48,7 +48,7 @@ _PROTECTED_PATH = Path(__file__).parent / "protected_compounds.json"
 def _load_protected_compounds() -> set[str]:
     """
     protected_compounds.json에서 예외 화합물 목록을 로드.
-    파일이 없으면 빈 set 반환.
+    파일이 없으면 FileNotFoundError 발생.
     """
     if not _PROTECTED_PATH.exists():
         raise FileNotFoundError(
@@ -68,19 +68,41 @@ def _strip_salt(name: str) -> str:
     제형 제거까지 끝난 단일 화합물명에 대해
     protected 여부 체크 후 salt 제거.
 
-    protected_compounds.json에 있는 화합물은 salt 제거 스킵.
-
     예시:
-        "heparin sodium"  → "heparin sodium"  (protected)
-        "sodium chloride" → "sodium chloride"  (protected)
-        "morphine sulfate" → "morphine"        (not protected)
-        "midazolam hcl"   → "midazolam"        (not protected)
+        "heparin sodium"   → "heparin sodium"  (protected)
+        "sodium chloride"  → "sodium chloride"  (protected)
+        "morphine sulfate" → "morphine"         (not protected)
+        "midazolam hcl"    → "midazolam"        (not protected)
     """
     if name in PROTECTED_COMPOUNDS:
         return name
     for salt in SALT_FORMS:
         name = re.sub(rf'\b{re.escape(salt)}\b', ' ', name)
     return re.sub(r'\s+', ' ', name).strip()
+
+
+def _sanitize_component(component: str) -> str:
+    """
+    단일 화합물 컴포넌트 정규화 — 용량/제형 제거 후 salt 제거.
+
+    예시:
+        "Piperacillin 4.5g powder for injection" → "piperacillin"
+        "Tazobactam"                             → "tazobactam"
+    """
+    # 1. 용량 제거
+    component = re.sub(
+        r'\d+\.?\d*\s*(mg|mcg|g|ml|l|units?|usp\s*units?|iu|meq|%)[\s\/\w]*',
+        ' ', component
+    )
+    # 2. 괄호 안 내용 제거
+    component = re.sub(r'\(.*?\)', '', component)
+    # 3. 제형 제거
+    for form in DOSE_FORMS:
+        component = re.sub(rf'\b{re.escape(form)}\b', ' ', component)
+    # 4. 공백 정리
+    component = re.sub(r'\s+', ' ', component).strip()
+    # 5. protected 체크 후 salt 제거
+    return _strip_salt(component)
 
 
 def sanitize_drug_name(raw_name: str) -> str:
@@ -106,30 +128,14 @@ def sanitize_drug_name(raw_name: str) -> str:
     # 1. 콤마 이후 제거
     name = name.split(",")[0]
 
-    # 2. 용량 제거 (숫자 + 단위 패턴)
-    name = re.sub(
-        r'\d+\.?\d*\s*(mg|mcg|g|ml|l|units?|usp\s*units?|iu|meq|%)[\s\/\w]*',
-        ' ', name
-    )
-
-    # 3. 괄호 안 내용 제거 (예: (1:1000))
-    name = re.sub(r'\(.*?\)', '', name)
-
-    # 4. 제형 제거
-    for form in DOSE_FORMS:
-        name = re.sub(rf'\b{re.escape(form)}\b', ' ', name)
-
-    # 5. 공백 정리
-    name = re.sub(r'\s+', ' ', name).strip()
-
-    # 6. 복합제 처리: "and" 기준으로 컴포넌트 분리
+    # 2. 복합제 처리: "and" 기준으로 컴포넌트 분리 후 각각 정규화
     # 예: "piperacillin and tazobactam" → "piperacillin / tazobactam"
     parts = re.split(r'\s+and\s+', name)
     if len(parts) > 1:
-        return ' / '.join(_strip_salt(p.strip()) for p in parts)
+        return ' / '.join(_sanitize_component(p.strip()) for p in parts)
 
-    # 7. 단일 화합물: protected 체크 후 salt 제거
-    return _strip_salt(name)
+    # 3. 단일 화합물
+    return _sanitize_component(name)
 
 
 def normalize_ndc(raw_ndc: str) -> str:
