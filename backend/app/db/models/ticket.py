@@ -12,6 +12,7 @@ class Ticket(TimeStampedModel):
     ticket_id = Column(String, unique=True, index=True, nullable=False)
     status = Column(String, nullable=False, default="CREATED")
     workflow_stage = Column(String, nullable=False, default="PENDING_INVENTORY")
+    # Ticket-level priority; inventory_result.priority/urgent are step-level outputs.
     priority = Column(String, nullable=True)
 
     # 2. 약품 및 이벤트 기본 정보

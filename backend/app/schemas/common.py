@@ -81,6 +81,8 @@ class ApprovalStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    # Schema-aligned only; a follow-up should decide whether handle_revise
+    # should persist Approval.status = REVISED.
     REVISED = "revised"
 
 

@@ -17,6 +17,8 @@ class Approval(TimeStampedModel):
         nullable=False
     )
 
+    # pending means a reviewer is assigned but has not decided yet.
+    # Pre-assignment review waiting state belongs to tickets.workflow_stage/status.
     status = Column(
         Enum(
             "pending",
