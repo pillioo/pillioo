@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from app.event.normalizer import normalize_ndc, normalize_event
+from app.event.normalizer import normalize_ndc, normalize_event, sanitize_drug_name
 
 # 샘플 데이터 경로
 SAMPLE_PATH = Path(__file__).parent.parent / "app" / "event" / "recall_samples.json"
