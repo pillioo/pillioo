@@ -233,7 +233,9 @@ def normalize_event(raw: dict) -> EventNormalized:
         classification=classification,
         status=raw.get("status", "ongoing"),
         recall_initiation_date=recall_date,
-        recall_number=raw["recall_number"],
-        product_description=raw["product_description"],
+
+        # RAG/evidence retrieval 및 ticket handoff을 위한 원본 필드 보존
+        recall_number=raw.get("recall_number"),
         reason_for_recall=raw.get("reason_for_recall"),
+        product_description=raw.get("product_description")
     )
