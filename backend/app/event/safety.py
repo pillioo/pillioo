@@ -195,7 +195,7 @@ def _find_sentence_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
-def draft_safety_check(draft_text: str) -> SafetyCheckResult:
+def draft_safety_check(draft_text: str, lang: str = "both") -> SafetyCheckResult:
     """
     보고서 초안을 문장 단위로 검사해서 위험 문장만 교체.
     위험하지 않은 문장과 원본 줄바꿈/공백은 그대로 보존.
