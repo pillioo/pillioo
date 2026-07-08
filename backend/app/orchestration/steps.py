@@ -214,7 +214,8 @@ def run_draft_step(
 
 def run_safety_step(db: Session, ticket: Ticket, state: TicketState) -> TicketState:
     started = time.perf_counter()
-    safety_result = draft_safety_check(state.draft_text or "")
+    safety_lang = "both"
+    safety_result = draft_safety_check(state.draft_text or "", lang=safety_lang)
     updated = state.model_copy(
         update={
             "safety_result": safety_result,
@@ -231,7 +232,7 @@ def run_safety_step(db: Session, ticket: Ticket, state: TicketState) -> TicketSt
         db=db,
         ticket_id=ticket.id,
         step_name=WorkflowStep.SAFETY_CHECK,
-        input_json={"draft_text": state.draft_text},
+        input_json={"draft_text": state.draft_text, "lang": safety_lang},
         output_json={"step_status": "succeeded", **ticket.safety_result},
         duration_ms=_elapsed_ms(started),
     )
