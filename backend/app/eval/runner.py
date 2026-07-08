@@ -14,60 +14,81 @@ async def run_scenario(scenario: dict) -> dict:
     input_event = scenario["input_event"]
     expected = scenario["expected"]
 
-    async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
+    try:
+        async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
 
-        # 1. 이벤트 업로드
-        response = await client.post("/events/upload", json=input_event)
-        if response.status_code != 200:
+            # 1. 이벤트 업로드
+            response = await client.post("/events/upload", json=input_event)
+            if response.status_code != 200:
+                return {
+                    "scenario_id": scenario_id,
+                    "passed": False,
+                    "error": f"Event upload failed: {response.status_code}",
+                }
+
+            ticket_id = response.json().get("ticket_id")
+            if not ticket_id:
+                return {
+                    "scenario_id": scenario_id,
+                    "passed": False,
+                    "error": "ticket_id not returned from event upload",
+                }
+
+            # 2. Workflow 실행
+            response = await client.post(f"/workflow/run/{ticket_id}")
+            if response.status_code != 200:
+                return {
+                    "scenario_id": scenario_id,
+                    "passed": False,
+                    "error": f"Workflow run failed: {response.status_code}",
+                }
+
+            # 3. Workflow 완료까지 폴링
+            actual = None
+            for _ in range(10):
+                await asyncio.sleep(1)
+                response = await client.get(f"/workflow/status/{ticket_id}")
+                if response.status_code == 200:
+                    actual = response.json()
+                    if actual.get("final_status") not in (None, "PROCESSING"):
+                        break
+
+            if actual is None:
+                return {
+                    "scenario_id": scenario_id,
+                    "passed": False,
+                    "error": "Workflow timeout",
+                }
+
+            # 4. 결과 비교
+            passed = (
+                actual.get("review_type") == expected.get("review_type")
+                and actual.get("evidence_status") == expected.get("evidence_status")
+                and actual.get("final_status") == expected.get("final_status")
+            )
+
             return {
                 "scenario_id": scenario_id,
-                "passed": False,
-                "error": f"Event upload failed: {response.status_code}",
-            }
-        ticket_id = response.json().get("ticket_id")
-
-        # 2. Workflow 실행
-        response = await client.post(f"/workflow/run/{ticket_id}")
-        if response.status_code != 200:
-            return {
-                "scenario_id": scenario_id,
-                "passed": False,
-                "error": f"Workflow run failed: {response.status_code}",
+                "passed": passed,
+                "expected_review_type": expected.get("review_type"),
+                "actual_review_type": actual.get("review_type"),
+                "expected_evidence_status": expected.get("evidence_status"),
+                "actual_evidence_status": actual.get("evidence_status"),
+                "expected_final_status": expected.get("final_status"),
+                "actual_final_status": actual.get("final_status"),
             }
 
-        # 3. Workflow 완료까지 폴링
-        actual = None
-        for _ in range(10):
-            await asyncio.sleep(1)
-            response = await client.get(f"/workflow/status/{ticket_id}")
-            if response.status_code == 200:
-                actual = response.json()
-                if actual.get("final_status") not in (None, "PROCESSING"):
-                    break
-
-        if actual is None:
-            return {
-                "scenario_id": scenario_id,
-                "passed": False,
-                "error": "Workflow timeout",
-            }
-
-        # 4. 결과 비교
-        passed = (
-            actual.get("review_type") == expected.get("review_type")
-            and actual.get("evidence_status") == expected.get("evidence_status")
-            and actual.get("final_status") == expected.get("final_status")
-        )
-
+    except httpx.TimeoutException:
         return {
             "scenario_id": scenario_id,
-            "passed": passed,
-            "expected_review_type": expected.get("review_type"),
-            "actual_review_type": actual.get("review_type"),
-            "expected_evidence_status": expected.get("evidence_status"),
-            "actual_evidence_status": actual.get("evidence_status"),
-            "expected_final_status": expected.get("final_status"),
-            "actual_final_status": actual.get("final_status"),
+            "passed": False,
+            "error": "Request timeout",
+        }
+    except httpx.RequestError as e:
+        return {
+            "scenario_id": scenario_id,
+            "passed": False,
+            "error": f"Network error: {str(e)}",
         }
 
 
@@ -82,7 +103,7 @@ async def run_all_scenarios() -> list[dict]:
         print(f"Running: {scenario['scenario_id']}...")
         result = await run_scenario(scenario)
         results.append(result)
-        status = "PASS" if result["passed"] else "FAIL"
+        status = "PASS" if result.get("passed") else "FAIL"
         print(f"  {status}: {scenario['scenario_id']}")
 
     return results
