@@ -4,7 +4,8 @@ P1 - Event Router
 FastAPI router for event intake endpoints.
 Handles recall event upload and triggers normalization + dedup + ticket creation.
 """
-
+import hashlib
+import json
 from fastapi import APIRouter, HTTPException
 
 from app.event.normalizer import normalize_event
@@ -16,6 +17,12 @@ from app.event.collector import periodic_collect
 
 router = APIRouter(prefix="/events", tags=["events"])
 
+# [코드래빗 피드백 반영] 식별자가 없을 때 원본 데이터를 해싱하여 안정적인 고유 ID 생성
+def generate_fallback_id(data: dict) -> str:
+    # 딕셔너리 키를 정렬하여 항상 일정한 문자열이 나오도록 보장
+    payload_str = json.dumps(data, sort_keys=True)
+    hash_val = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()[:12]
+    return f"FALLBACK-{hash_val}"
 
 @router.post("/upload", response_model=EventUploadResponse)
 async def upload_event(payload: EventUploadRequest) -> EventUploadResponse:
@@ -100,6 +107,10 @@ async def trigger_openfda_collection():
         try:
             # 1. 정규화
             event = normalize_event(raw_event)
+
+            # [코드래빗 피드백 반영] 대량 수집 시에도 UNKNOWN_ID 충돌 방지
+            if event.event_id == "UNKNOWN_ID":
+                event.event_id = generate_fallback_id(raw_event)
             
             # 2. 수동 수집 루프에서도 .duplicated 필드를 보도록 수정 완료!
             dedup_result = check_and_save_event(event.event_id)
@@ -109,7 +120,8 @@ async def trigger_openfda_collection():
                     processed_summary["recalls"]["tickets_created"] += 1
                 except Exception:
                     release_event(event.event_id) # 티켓 발행 실패 시 롤백
-        except Exception:
+        except Exception as e:
+            print(f"[Router] recall 이벤트 처리 실패, 건너뜁니다: {raw_event.get('recall_number')}, error={e}")
             continue  # 한 건의 데이터가 포맷 오류 등으로 깨져도 전체 수집이 멈추지 않도록 방어
 
     return {
@@ -121,7 +133,7 @@ async def trigger_openfda_collection():
 @router.get("/latest")
 async def get_latest_events():
     """
-    최근 수집된 이벤트 목록 조회.
+    최근 수집된 이벤트 목록 조회
 
     TODO: 2주차에 구현 (P5 DB 준비 완료 후)
     """
