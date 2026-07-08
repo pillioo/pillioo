@@ -53,9 +53,9 @@ def find_existing_ticket(db: Session, event: EventNormalized) -> Ticket | None:
         )
         .first()
     )
-    if existing is not None:
-        return existing
-
+    
+    if not event.recall_number:
+        return None
     filters = [
         Ticket.event_type == event.event_type.value,
         Ticket.recall_number == event.recall_number,
