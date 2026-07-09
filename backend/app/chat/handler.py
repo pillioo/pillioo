@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.db.models.chat import ChatSession, ChatMessage
+from app.db.models.chat_model import ChatSession, ChatMessage
 from app.orchestration.state import ticket_to_state
 from app.rag.models import RetrievalContext
 from app.rag.service import RetrievalService
