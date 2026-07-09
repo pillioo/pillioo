@@ -65,6 +65,16 @@ class SufficiencyCheckResult(BaseModel):
                 "evidence_status must be sufficient when missing_sources and weak_sources are empty."
             )
 
+        if has_non_source_failure and self.evidence_status != EvidenceStatus.INSUFFICIENT:
+            raise ValueError(
+                "evidence_status must be insufficient when citations are not ready or failure_reasons is not empty."
+            )
+
+        if has_non_source_failure and not self.needs_evidence_review:
+            raise ValueError(
+                "needs_evidence_review must be true when citations are not ready or failure_reasons is not empty."
+            )
+
         if self.evidence_status == EvidenceStatus.INSUFFICIENT and not self.needs_evidence_review:
             raise ValueError(
                 "needs_evidence_review must match whether missing_sources or weak_sources is non-empty."

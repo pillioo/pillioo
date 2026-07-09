@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.rag.filters import FilterCandidate, MetadataFilterBuilder
 from app.rag.models import EvidenceChunk, EvidencePlan, EvidenceTarget, RetrievalContext
 from app.rag.reranker import MetadataAwareReranker
+from app.rag.retriever import MilvusCandidateRetriever
 from app.rag.router import EvidenceRouter
 from app.rag.service import RetrievalService
 from app.rag.set_builder import EvidenceSetBuilder
@@ -47,6 +48,16 @@ class FakeRetriever:
             }
         )
         return self.chunks
+
+
+class FakeMilvusRetriever(MilvusCandidateRetriever):
+    def __init__(self, hits: list[dict]) -> None:
+        self.hits = hits
+        self.oversample = 4
+        self.last_filter_attempts = []
+
+    def _search(self, *, query_embedding: list[float], filter_expr: str, limit: int) -> list[dict]:
+        return self.hits
 
 
 def chunk(**overrides: object) -> EvidenceChunk:
@@ -216,3 +227,26 @@ def test_retrieval_service_orchestrates_retrieval_components() -> None:
     }
     assert result.retrieval_trace["filter_attempts"][0]["level"] == "strong_identifier_section"
     assert result.retrieval_trace["selected_chunks"][0]["chunk_id"] == "chunk-1"
+
+
+def test_milvus_retriever_marks_override_stopped_only_when_hits_exist() -> None:
+    retriever = FakeMilvusRetriever(hits=[])
+
+    result = retriever.retrieve(
+        query_embedding=[0.1, 0.2, 0.3],
+        context=RetrievalContext(),
+        plan=EvidencePlan(event_type=None, targets=[]),
+        top_k=5,
+        filter_override='document_type == "policy"',
+    )
+
+    assert result == []
+    assert retriever.last_filter_attempts == [
+        {
+            "target_document_type": "override",
+            "level": "override",
+            "expr": 'document_type == "policy"',
+            "hit_count": 0,
+            "stopped_on_hits": False,
+        }
+    ]

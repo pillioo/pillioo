@@ -68,7 +68,7 @@ class MilvusCandidateRetriever(CandidateRetriever):
                     "level": "override",
                     "expr": filter_override,
                     "hit_count": len(hits),
-                    "stopped_on_hits": True,
+                    "stopped_on_hits": bool(hits),
                 }
             )
             return [

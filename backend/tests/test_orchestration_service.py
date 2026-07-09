@@ -315,7 +315,12 @@ def test_policy_aggregator_prioritizes_evidence_review_over_action_review() -> N
 def test_policy_aggregator_routes_citations_not_ready_to_evidence_review() -> None:
     state = minimal_state(
         inventory_result=matched_inventory(),
-        sufficiency_check=sufficient_evidence(citations_ready=False),
+        sufficiency_check=sufficient_evidence(
+            citations_ready=False,
+            evidence_status=EvidenceStatus.INSUFFICIENT,
+            needs_evidence_review=True,
+            failure_reasons=[{"reason": "citation_not_ready"}],
+        ),
     )
 
     assert aggregate_policy_decision(state).review_type == ReviewType.EVIDENCE_REVIEW
