@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.models.chat_model import ChatSession, ChatMessage
+from app.orchestration.retrieval_identity import resolve_retrieval_drug_name
 from app.orchestration.state import ticket_to_state
 from app.rag.models import RetrievalContext
 from app.rag.service import RetrievalService
@@ -144,30 +145,30 @@ def handle_chat(
         content=user_query,
     )
 
-    +    # 4. RetrievalService.retrieve() 호출
-+    context = RetrievalContext(
-+        event_type=state.event_type.value if state.event_type else None,
-+        query=user_query,
-+        drug_name=state.event_normalized.drug_name if state.event_normalized else None,
-+        normalized_drug_name=state.event_normalized.drug_name if state.event_normalized else None,
-+        ndc=[state.event_normalized.ndc] if state.event_normalized and state.event_normalized.ndc else [],
-+        lot=state.event_normalized.lot if state.event_normalized else None,
-+        recall_number=state.event_normalized.recall_number if state.event_normalized else None,
-+        classification=state.classification.value if state.classification else None,
-+    )
-+
-+    try:
-+        evidence_result = retrieval_service.retrieve(
-+            query=user_query,
-+            context=context,
-+            top_k=top_k,
-+        )
-+    except Exception:
-+        db.rollback()
-+        raise_review_error(
-+            ReviewError.REVIEW_INTERNAL_ERROR,
-+            {"reason": "Evidence retrieval failed"}
-+        )
+    # 4. RetrievalService.retrieve() 호출
+    context = RetrievalContext(
+        event_type=state.event_type.value if state.event_type else None,
+        query=user_query,
+        drug_name=state.event_normalized.drug_name if state.event_normalized else None,
+        normalized_drug_name=resolve_retrieval_drug_name(state.event_normalized) if state.event_normalized else None,
+        ndc=[state.event_normalized.ndc] if state.event_normalized and state.event_normalized.ndc else [],
+        lot=state.event_normalized.lot if state.event_normalized else None,
+        recall_number=state.event_normalized.recall_number if state.event_normalized else None,
+        classification=state.classification.value if state.classification else None,
+    )
+
+    try:
+        evidence_result = retrieval_service.retrieve(
+            query=user_query,
+            context=context,
+            top_k=top_k,
+        )
+    except Exception:
+        db.rollback()
+        raise_review_error(
+            ReviewError.REVIEW_INTERNAL_ERROR,
+            {"reason": "Evidence retrieval failed"}
+        )
 
     # 5. template 답변 구성 (MVP — LLM 생성은 후순위)
     sources = [
