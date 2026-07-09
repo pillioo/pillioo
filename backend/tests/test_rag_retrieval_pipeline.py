@@ -76,6 +76,23 @@ def test_filter_builder_recall_notice_with_recall_number_creates_strong_identifi
     assert f'{MilvusField.RECALL_NUMBER} == "D-0277-2024"' in strong.expr
 
 
+def test_filter_builder_prefers_strong_identifier_with_section_before_identifier_only() -> None:
+    target = EvidenceTarget("label", sections=["warnings"])
+    context = RetrievalContext(rxnorm_rxcui="74169")
+
+    levels = MetadataFilterBuilder().build_filter_levels(context, target)
+
+    assert levels[0].level == "strong_identifier_section"
+    assert f'{MilvusField.RXNORM_RXCUI} == "74169"' in levels[0].expr
+    assert f'{MilvusField.SECTION} == "warnings"' in levels[0].expr
+    assert [level.level for level in levels] == [
+        "strong_identifier_section",
+        "strong_identifier",
+        "section",
+        "document_type",
+    ]
+
+
 def test_filter_builder_no_recall_number_skips_strong_identifier_for_recall_notice() -> None:
     target = EvidenceTarget("recall_notice", sections=["recall_notice"])
     context = RetrievalContext(recall_number=None)
@@ -309,7 +326,7 @@ def test_sufficiency_checker_returns_sufficient_when_required_types_found_non_we
     )
     chunks = [
         make_chunk(document_type="recall_notice", filter_level="section"),
-        make_chunk(document_type="policy", filter_level="strong_identifier"),
+        make_chunk(document_type="policy", section="required_actions", filter_level="strong_identifier"),
     ]
 
     result = SufficiencyChecker().check(chunks, plan=plan)
@@ -335,6 +352,10 @@ def test_sufficiency_checker_insufficient_when_required_document_type_missing() 
 
     assert result.evidence_status == "insufficient"
     assert result.missing_document_types == ["policy", "sop"]
+    assert result.failure_reasons[:2] == [
+        {"reason": "missing_required_document_type", "document_type": "policy"},
+        {"reason": "missing_required_document_type", "document_type": "sop"},
+    ]
     assert result.needs_evidence_review is True
 
 
@@ -348,6 +369,42 @@ def test_sufficiency_checker_marks_document_type_only_fallback_as_weak() -> None
     result = SufficiencyChecker().check(chunks, plan=plan)
 
     assert result.weak_document_types == ["policy"]
+    assert result.failure_reasons == [
+        {
+            "reason": "only_loose_filter_matched",
+            "document_type": "policy",
+            "filter_levels": ["document_type"],
+        }
+    ]
+    assert result.evidence_status == "insufficient"
+
+
+def test_sufficiency_checker_marks_wrong_section_identifier_match_as_weak() -> None:
+    plan = EvidencePlan(
+        event_type="label_update",
+        targets=[EvidenceTarget("label", sections=["warnings"])],
+    )
+    chunks = [
+        make_chunk(
+            document_type="label",
+            section="dosage",
+            filter_level="strong_identifier",
+            rxnorm_rxcui="74169",
+        )
+    ]
+
+    result = SufficiencyChecker().check(chunks, plan=plan)
+
+    assert result.missing_document_types == []
+    assert result.weak_document_types == ["label"]
+    assert result.failure_reasons == [
+        {
+            "reason": "identifier_section_mismatch",
+            "document_type": "label",
+            "required_sections": ["warnings"],
+            "matched_sections": ["dosage"],
+        }
+    ]
     assert result.evidence_status == "insufficient"
 
 
@@ -358,6 +415,12 @@ def test_sufficiency_checker_citations_not_ready_when_required_fields_missing() 
     result = SufficiencyChecker().check(chunks, plan=plan)
 
     assert result.citations_ready is False
+    assert result.failure_reasons == [
+        {
+            "reason": "citation_not_ready",
+            "missing_chunks": [{"chunk_id": "chunk-1", "missing_fields": ["source_path"]}],
+        }
+    ]
     assert result.evidence_status == "insufficient"
 
 

@@ -25,6 +25,14 @@ class EvidenceTarget:
     sections: list[str] = field(default_factory=list)
     top_k: int = 5
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "document_type": self.document_type,
+            "required": self.required,
+            "sections": self.sections,
+            "top_k": self.top_k,
+        }
+
 
 @dataclass(frozen=True)
 class EvidencePlan:
@@ -145,6 +153,7 @@ class SufficiencyResult:
     evidence_status: str
     needs_evidence_review: bool
     citations_ready: bool
+    failure_reasons: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -154,6 +163,7 @@ class EvidenceResult:
     plan: EvidencePlan
     chunks: list[EvidenceChunk]
     sufficiency: SufficiencyResult
+    retrieval_trace: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -163,10 +173,12 @@ class EvidenceResult:
             "found_document_types": self.sufficiency.found_document_types,
             "missing_document_types": self.sufficiency.missing_document_types,
             "weak_document_types": self.sufficiency.weak_document_types,
+            "failure_reasons": self.sufficiency.failure_reasons,
             "coverage_score": self.sufficiency.coverage_score,
             "evidence_status": self.sufficiency.evidence_status,
             "needs_evidence_review": self.sufficiency.needs_evidence_review,
             "citations_ready": self.sufficiency.citations_ready,
+            "retrieval_trace": self.retrieval_trace,
             "chunks": [chunk.to_dict() for chunk in self.chunks],
         }
 
