@@ -320,8 +320,10 @@ def evidence_audit_output(*, query: str, top_k: int, rag_result, evidence_result
         "found_sources": [source.value for source in sufficiency_check.found_sources],
         "missing_sources": [source.value for source in sufficiency_check.missing_sources],
         "weak_sources": [source.value for source in sufficiency_check.weak_sources],
+        "failure_reasons": sufficiency_check.failure_reasons,
         "chunk_count": len(evidence_result.top_chunks),
         "citations_ready": sufficiency_check.citations_ready,
+        "retrieval_trace": rag_result.retrieval_trace,
         "evidence_result": evidence_result.model_dump(mode="json"),
         "sufficiency_check": sufficiency_check.model_dump(mode="json"),
     }

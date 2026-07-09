@@ -384,6 +384,20 @@ class TestSufficiencyCheckResult:
                 needs_evidence_review=False,
             )
 
+    def test_failure_reason_allows_insufficient_without_missing_sources(self):
+        result = SufficiencyCheckResult(
+            required_sources=[DocumentType.POLICY],
+            found_sources=[DocumentType.POLICY],
+            missing_sources=[],
+            coverage_score=1.0,
+            evidence_status=EvidenceStatus.INSUFFICIENT,
+            needs_evidence_review=True,
+            citations_ready=False,
+            failure_reasons=[{"reason": "citation_not_ready"}],
+        )
+
+        assert result.failure_reasons == [{"reason": "citation_not_ready"}]
+
     def test_needs_evidence_review_must_match_missing(self):
         with pytest.raises(ValidationError, match="needs_evidence_review must match"):
             SufficiencyCheckResult(

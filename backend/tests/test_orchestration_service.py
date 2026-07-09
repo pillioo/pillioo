@@ -419,6 +419,8 @@ def test_run_ticket_workflow_persists_state_and_audit_with_fake_evidence() -> No
     assert evidence_audit.output_json["coverage_score"] == 1.0
     assert evidence_audit.output_json["chunk_count"] == 3
     assert evidence_audit.output_json["citations_ready"] is True
+    assert evidence_audit.output_json["failure_reasons"] == []
+    assert "retrieval_trace" in evidence_audit.output_json
 
     safety_audit = next(obj for obj in db.objects if isinstance(obj, AuditLog) and obj.step_name == "safety_check")
     assert safety_audit.input_json["lang"] == "both"
