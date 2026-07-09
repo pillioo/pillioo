@@ -98,6 +98,21 @@ def test_to_sufficiency_check_result_keeps_weak_sources_separate_from_missing() 
     assert result.needs_evidence_review is True
 
 
+def test_to_sufficiency_check_result_maps_failure_reasons() -> None:
+    result = to_sufficiency_check_result(
+        sufficiency(
+            evidence_status="insufficient",
+            needs_evidence_review=True,
+            citations_ready=False,
+            failure_reasons=[{"reason": "citation_not_ready"}],
+        )
+    )
+
+    assert result.failure_reasons == [{"reason": "citation_not_ready"}]
+    assert result.citations_ready is False
+    assert result.evidence_status == "insufficient"
+
+
 def test_to_ticket_state_fields_returns_matching_pair() -> None:
     result = EvidenceResult(
         query="q",
