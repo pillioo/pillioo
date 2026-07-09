@@ -41,7 +41,7 @@ class ChatRequest(BaseModel):
 # ──────────────────────────────────────────────
 
 @router.post("/chat/{ticket_id}")
-async def submit_chat_query(
+def submit_chat_query(
     ticket_id: str,
     request: ChatRequest,
     db: Session = Depends(get_db),
@@ -87,7 +87,7 @@ async def submit_chat_query(
 
 
 @router.get("/chat/{ticket_id}/history")
-async def get_ticket_chat_history(
+def get_ticket_chat_history(
     ticket_id: str,
     db: Session = Depends(get_db),
 ):
