@@ -1,5 +1,5 @@
 """
-P1 - Event Router
+Event Router
 
 FastAPI router for event intake endpoints.
 Handles recall event upload and triggers normalization + dedup + ticket creation.
