@@ -22,7 +22,8 @@ def get_inventory_impact(ticket_id: str, db: Session = Depends(get_db)):
 
     drug_name = ticket.drug_name or ""
     ndc = ticket.ndc or ""
-    lot = ticket.lot_number or ""
+    # CodeRabbit 봇 피드백 반영: lot_number -> lot 으로 필드명 수정
+    lot = ticket.lot or ""
 
     match_result = inventory_match(
         drug_name=drug_name,
