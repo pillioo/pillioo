@@ -15,9 +15,7 @@ router = APIRouter()
 router.include_router(event_router)
 router.include_router(review_router)
 router.include_router(chat_router)
-
 router.include_router(rag_router)
-router.include_router(review_router)
 router.include_router(orchestration_router)
 
 @router.get("/health-db")
