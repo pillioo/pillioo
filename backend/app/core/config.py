@@ -9,13 +9,16 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DATABASE_URL: str
 
-    # 추가된 부분: .env의 API 키를 받을 공간을 마련해준다.
     OPENFDA_API_KEY: Optional[str] = None
 
-    # RAG/Milvus 연동 설정 (evidence retrieval trigger에서 사용)
+    # RAG / Milvus
     MILVUS_URI: str = "http://localhost:19530"
-    MILVUS_COLLECTION: str = "evidence_chunks"
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    MILVUS_COLLECTION: str = "evidence_chunks"  # pharmaops → evidence_chunks
+    OPENAI_API_KEY: Optional[str] = None
+    EMBEDDING_MODEL: str = "text-embedding-3-small"  # OPENAI_EMBEDDING_MODEL → EMBEDDING_MODEL
+    EMBEDDING_DIM: int = 1536
+    EMBEDDING_BATCH_SIZE: int = 64
+    EMBEDDING_PROVIDER: str = "openai"
 
     class Config:
         env_file = ".env"
