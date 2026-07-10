@@ -9,16 +9,19 @@ from app.review.router import router as review_router
 from app.chat.router import router as chat_router
 from app.orchestration.router import router as orchestration_router
 from app.rag.api import router as rag_router
+from app.dashboard.router import router as dashboard_router
+from app.inventory.router import router as inventory_router
 
 
 router = APIRouter()
 router.include_router(event_router)
 router.include_router(review_router)
 router.include_router(chat_router)
-
 router.include_router(rag_router)
 router.include_router(review_router)
 router.include_router(orchestration_router)
+router.include_router(dashboard_router)
+router.include_router(inventory_router)
 
 @router.get("/health-db")
 async def health_db(db: Session = Depends(get_db)):
