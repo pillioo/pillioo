@@ -9,16 +9,17 @@ from app.orchestration.router import router as orchestration_router
 from app.rag.api import router as rag_router
 from app.review.router import router as review_router
 
+
 router = APIRouter()
 
 router.include_router(event_router)
+
 router.include_router(rag_router)
 router.include_router(review_router)
 router.include_router(orchestration_router)
 
 @router.get("/health-db")
 async def health_db(db: Session = Depends(get_db)):
-    # 간단한 쿼리 예시 (테스트용)
     try:
         db.execute(text("SELECT 1"))
         return {"db": "connected"}
