@@ -8,6 +8,7 @@ from app.schemas.common import ReportVersionTag
 
 
 class ReportVersion(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     version_id: str
     report_id: str
     ticket_id: str
