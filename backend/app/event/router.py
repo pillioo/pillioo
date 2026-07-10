@@ -75,8 +75,6 @@ async def upload_event(
         except Exception as e:
             db.rollback()
             release_event(event.event_id) # 중복 저장했던 기록 취소
-            import traceback
-            traceback.print_exc()
             raise HTTPException(
                 status_code=500,
                 detail={
