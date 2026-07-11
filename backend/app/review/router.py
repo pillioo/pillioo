@@ -186,6 +186,7 @@ async def get_pending_approvals(
 ):
     pending = (
         db.query(Approval)
+        .join(Ticket, Approval.ticket_id == Ticket.id)
         .filter(Approval.status == ApprovalStatus.PENDING.value)
         .order_by(Approval.created_at.asc())
         .all()
@@ -193,13 +194,13 @@ async def get_pending_approvals(
 
     return [
         {
-            "ticket_id": a.ticket.ticket_id if a.ticket else None,
+            "ticket_id": a.ticket.ticket_id,
             "internal_id": a.ticket_id,
-            "drug_name": a.ticket.drug_name if a.ticket else "",
-            "recall_number": a.ticket.recall_number if a.ticket else None,
-            "classification": a.ticket.classification if a.ticket else None,
-            "review_type": a.ticket.review_type if a.ticket else None,
-            "priority": a.ticket.priority if a.ticket else None,
+            "drug_name": a.ticket.drug_name,
+            "recall_number": a.ticket.recall_number,
+            "classification": a.ticket.classification,
+            "review_type": a.ticket.review_type,
+            "priority": a.ticket.priority,
             "approval_status": a.status,
             "created_at": a.created_at,
         }
