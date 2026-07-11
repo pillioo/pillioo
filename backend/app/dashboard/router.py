@@ -14,6 +14,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 def get_dashboard_summary(db: Session = Depends(get_db)):
     """
     전체 티켓 현황과 통계를 반환한다.
+    약사/운영자가 지금 어떤 티켓을 먼저 처리해야 하는지 판단할 수 있는 업무 queue 역할.
     """
 
     # 전체 티켓 수
@@ -63,8 +64,9 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         Ticket.status == "REVIEW_ROUTED"
     ).count()
 
-    # 긴급 티켓 목록 (urgent=True 또는 days_remaining <= 3)
+    # 긴급 티켓 목록 (priority == HIGH + CLOSED 아닌 것)
     urgent_tickets_query = db.query(Ticket).filter(
+        Ticket.priority == "HIGH",
         Ticket.status != "CLOSED"
     ).order_by(Ticket.created_at.desc()).limit(5).all()
 
