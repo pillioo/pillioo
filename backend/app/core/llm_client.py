@@ -27,8 +27,32 @@ def build_llm_client() -> OpenAI:
     (draft generation, evidence chat).
 
     Embeddings (app/rag, scripts/rag/embedding) intentionally do NOT use this
-    helper -- they construct their own bare OpenAI() client and always call
-    the OpenAI API directly, since a chat-completions gateway is not
-    guaranteed to also proxy the embeddings endpoint.
+    helper -- see embedding_client_kwargs() below.
     """
     return OpenAI(**openai_client_kwargs())
+
+
+_OPENAI_API_BASE_URL = "https://api.openai.com/v1"
+
+
+def embedding_client_kwargs() -> dict[str, str]:
+    """Kwargs for the embeddings client. Embeddings always call the real
+    OpenAI API directly -- never through OPENAI_BASE_URL -- because a
+    chat-completions gateway is not guaranteed to also proxy /embeddings.
+
+    IMPORTANT: a "bare" `OpenAI()` call is NOT actually gateway-free once
+    OPENAI_BASE_URL is set as an environment variable, because the OpenAI
+    SDK falls back to reading OPENAI_BASE_URL from the environment itself
+    when no explicit base_url is passed. That silently rerouted embedding
+    requests through the chat gateway and produced 404s (the gateway has
+    no /embeddings route). This function always pins base_url explicitly
+    to bypass that fallback.
+
+    Uses settings.EMBEDDING_API_KEY if set (needed once OPENAI_API_KEY has
+    been repurposed as a gateway key), else falls back to OPENAI_API_KEY.
+    """
+    kwargs: dict[str, str] = {"base_url": _OPENAI_API_BASE_URL}
+    api_key = settings.EMBEDDING_API_KEY or settings.OPENAI_API_KEY
+    if api_key:
+        kwargs["api_key"] = api_key
+    return kwargs
