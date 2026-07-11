@@ -12,6 +12,7 @@ rules.
 POST /events/upload                      -> create/reuse ticket (status=CREATED)
 POST /tickets/{ticket_id}/run             -> run inventory, evidence, draft, safety, routing
 GET  /tickets/{ticket_id}                 -> status, per-step progress, can_rerun
+GET  /tickets/{ticket_id}/evidence        -> latest durable workflow evidence snapshot
 GET  /tickets/{ticket_id}/evidence-trace  -> inspect retrieval/gate/routing state
 GET  /reports/{ticket_id}                 -> latest draft/report version
 GET  /tickets/{ticket_id}/review          -> pharmacist review payload
@@ -20,8 +21,8 @@ POST /approval/{ticket_id}/approve        -> freeze latest draft as final_v1
 GET  /reports/{ticket_id}/versions        -> verify draft/final version history
 ```
 
-`GET /tickets?recall_number=...` is currently a shortcut lookup, not a
-paginated ticket list.
+`GET /tickets` supports filtering (`status`, `review_type`, `priority`,
+`recall_number`, free-text `q`) and pagination (`limit`, `offset`).
 
 ## Events
 
@@ -35,9 +36,10 @@ paginated ticket list.
 
 | Method | Path | Source | Description |
 |---|---|---|---|
-| GET | `/tickets` | `app/review/router.py` | Requires `recall_number`. Finds the most recent ticket for that recall number. This is not yet the frontend's full list/search API. |
+| GET | `/tickets` | `app/review/router.py` | Frontend list/search API. Optional filters: `status`, `review_type`, `priority`, `recall_number`, and free-text `q` (matches `drug_name`, `recall_number`, `ticket_id`). Paginated via `limit` (default 20, max 100) and `offset`. Returns `{ items, total, limit, offset }`, sorted newest first. |
 | GET | `/tickets/{ticket_id}` | `app/review/ticket_detail.py` | Consolidated workflow screen payload: ticket status, priority, review type, `can_rerun`, failure reason, and ordered step statuses built from audit logs. |
 | POST | `/tickets/{ticket_id}/run` | `app/orchestration/router.py` | Runs or resumes the workflow for a created/failed ticket: inventory match, evidence retrieval, sufficiency gate, structured draft report generation, safety check, and policy routing. Already-processed tickets are returned idempotently. |
+| GET | `/tickets/{ticket_id}/evidence` | `app/rag/api.py` | Returns the latest durable workflow evidence snapshot for the ticket. This is the frontend/product evidence view and includes `snapshot_type`, `source_audit_log_id`, selected chunks, citations, sufficiency result, retrieval context, retrieval plan, and retrieval trace. For tickets processed before snapshots existed, falls back to `snapshot_type=legacy_ticket_evidence` reconstructed from ticket JSON fields when available. |
 | GET | `/tickets/{ticket_id}/evidence-trace` | `app/rag/api.py` | Read-only evidence debugging view: retrieval query/context, top chunks, citations, sufficiency gate, and routing details. Most fields are empty until the workflow reaches evidence retrieval. |
 | GET | `/tickets/{ticket_id}/review` | `app/review/router.py` | Pharmacist review payload. Shape depends on `review_type`: `identity_review`, `evidence_review`, `action_review`, or `final_approval`. Current payloads still expose the flattened `draft_text`/citations view, while structured report JSON is exposed through report endpoints. |
 
@@ -61,11 +63,74 @@ Version semantics:
 | `draft_v2` | Created either from a pharmacist's direct edited text (`/approval/{ticket_id}/revise`) or from bounded system revision (`/approval/{ticket_id}/revise-with-llm`). Both paths rerun draft safety checks before saving. |
 | `final_v1` | Created by freezing the latest approved draft exactly as-is. No LLM call is made during approval. Approval metadata is attached on the final version. |
 
+## Evidence Snapshots
+
+Workflow evidence is persisted in `ticket_evidence_snapshots` after evidence
+retrieval and sufficiency check complete. This is separate from audit logs:
+audit logs record step execution, while evidence snapshots record the durable
+ticket-level evidence state used for routing/review decisions.
+
+| Field | Meaning |
+|---|---|
+| `snapshot_type` | Currently `workflow_evidence`, distinguishing workflow decision evidence from future chat/ad-hoc evidence snapshots. |
+| `snapshot_version` | Monotonic per ticket and snapshot type. Retry/re-run creates the next version. |
+| `source_audit_log_id` | The sufficiency-check audit log row that finalized the evidence decision represented by the snapshot. |
+| `selected_chunks` | Evidence chunks selected for the ticket-level decision. Each chunk includes dense similarity plus hybrid reranking metadata such as `rank_score`, `rank_reasons`, `matched_identifiers`, `filter_level`, `lexical_overlap_score`, and `lexical_overlap_terms`. |
+| `citations` | Citation list derived from selected chunks. |
+| `sufficiency_result` | Required/found/missing/weak sources, coverage, failure reasons, and citation readiness. |
+| `retrieval_context` | Query-time ticket context used by RAG. |
+| `retrieval_plan` | RAG target document types/sections when available. |
+| `retrieval_trace` | Retrieval execution trace, filter attempts, selected chunk metadata, and rank reasons. |
+
+Evidence retrieval uses dense vector search as the candidate generator, then
+applies a lightweight hybrid rerank. The reranker keeps the original dense
+`similarity_score` and adds a combined `rank_score` using lexical overlap,
+ticket identifier matches (`recall_number`, NDC, lot, normalized drug name,
+RxCUI), required document type/section boosts, and fallback penalties. For
+recall tickets, a `recall_notice` selected only by section fallback is treated
+as weak unless it matches at least one strong ticket identifier.
+
+Example selected recall notice metadata:
+
+```json
+{
+  "document_type": "recall_notice",
+  "section": "recall_notice",
+  "similarity_score": 0.551,
+  "rank_score": 1.0477,
+  "filter_level": "strong_identifier_section",
+  "rank_reasons": [
+    "lexical_overlap",
+    "required_document_type",
+    "required_section",
+    "recall_number_match",
+    "lot_match"
+  ],
+  "matched_identifiers": {
+    "recall_number": "D-0277-2024",
+    "lot": "2331062"
+  },
+  "lexical_overlap_score": 0.0667,
+  "lexical_overlap_terms": ["0277", "2024", "class", "recall"]
+}
+```
+
+Swagger sanity check: uploading a recall event with `recall_number=D-0277-2024`
+and `lot_number=2331062`, running `POST /tickets/{ticket_id}/run`, then calling
+`GET /tickets/{ticket_id}/evidence` should return `evidence_status=sufficient`,
+with the selected recall notice at `filter_level=strong_identifier_section` and
+`matched_identifiers` containing the recall number and lot.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/tickets/{ticket_id}/evidence` | Latest workflow evidence snapshot. If no snapshot row exists but legacy ticket evidence JSON exists, returns `snapshot_type=legacy_ticket_evidence` with a warning. Returns 404 `EVIDENCE_SNAPSHOT_NOT_FOUND` only when neither snapshot nor ticket evidence exists. |
+| GET | `/tickets/{ticket_id}/evidence-trace` | Debug reconstruction from ticket JSON columns and audit logs. Kept for operational troubleshooting. |
+
 ## Review & Approval
 
 | Method | Path | Body | Description |
 |---|---|---|---|
-| GET | `/approval/pending` | n/a | Lists pending approval rows with ticket/product/review metadata. Note: `ticket_id` currently reflects the approval FK in some code paths; prefer `public_ticket_id` for route calls if present. |
+| GET | `/approval/pending` | n/a | Lists pending approval rows with ticket/product/review metadata. `ticket_id` is the public ticket id (use this for route calls, e.g. `/approval/{ticket_id}/approve`); `internal_id` is the internal integer FK, exposed for reference only. |
 | POST | `/approval/{ticket_id}/approve` | `{ reviewer, comment? }` | Approves the ticket and freezes the latest draft version as `final_v1`. Fails if a final version already exists or no report exists. |
 | POST | `/approval/{ticket_id}/reject` | `{ reviewer, comment }` | Rejects the ticket; `comment` is required. |
 | POST | `/approval/{ticket_id}/revise` | `{ reviewer, revised_draft, comment? }` | Pharmacist-edited path. Re-runs safety check on the supplied plain-text draft and, if safe, saves `draft_v2` with revision metadata. |
@@ -95,13 +160,13 @@ Chat answer modes:
 | Method | Path | Description |
 |---|---|---|
 | GET | `/inventory/impact/{ticket_id}` | Recomputes inventory match, impact summary, and quality check for a ticket's drug/NDC/lot. Useful for a ticket detail "inventory impact" panel. |
-| GET | `/dashboard/summary` | Returns aggregate ticket counts by status and review type plus a small recent-ticket list. This is a basic dashboard summary, not a full analytics API. |
+| GET | `/dashboard/summary` | Returns aggregate ticket counts (`by_status`, `by_review_type`, `pending_approvals`, `workflow_failed`, `high_priority`, `today_created`, `evidence_review_pending`) plus operational queues for pharmacist/ops triage: `urgent_tickets`, `recent_failures`, `recent_tickets`, `evidence_queue` (evidence-review tickets with weak sources/failure reasons/citation readiness from the latest evidence snapshot), `review_approval_queue` (pending approvals, draft_v2-without-final_v1 revision candidates, safety-check-failed tickets), and `inventory_impact` (impacted ticket counts by match type, high-impact ticket list). |
 
 ## Audit & Health
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/audit/{ticket_id}` | Full step-by-step audit trace for workflow and approval decisions. |
+| GET | `/audit/{ticket_id}` | Full step-by-step audit trace for workflow and approval decisions, ordered by `created_at`. Each entry includes the raw `step_name`/`input_json`/`output_json`/`duration_ms` plus frontend-timeline display fields derived from `output_json.step_status`: `title` (human step name), `message`, `severity` (`info`/`warning`/`error`), and `status` (`succeeded`/`failed`/`skipped`, defaults to `succeeded` when `step_status` is absent). |
 | GET | `/health-db` | Runs `SELECT 1` against Postgres and returns connection status. |
 
 ## Known Gaps
@@ -110,4 +175,4 @@ Chat answer modes:
 - `/events/upload` and `/events/collect` only create tickets. The frontend must call `/tickets/{ticket_id}/run` explicitly.
 - `/tickets/{ticket_id}/run`, chat retrieval, and LLM-backed draft/report generation require Milvus/OpenAI-compatible settings to be configured.
 - `revise-with-llm` requires the latest report version to contain `report_json`; legacy rows with only `report_text` return `NO_STRUCTURED_REPORT`.
-- The structured report migration should be verified with `alembic upgrade head` against a real Postgres instance before deployment.
+- `/events/collect` currently fetches openFDA records but `tickets_created` reports 0 even when records are fetched; ticket creation from collected events needs investigation.
