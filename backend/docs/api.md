@@ -102,11 +102,23 @@ ticket-level evidence state used for routing/review decisions.
 | Method | Path | Body | Description |
 |---|---|---|---|
 | POST | `/chat/{ticket_id}` | `{ user_query, session_id?, top_k? }` | Ticket-aware evidence chat. Reuses the ticket's chat session when `session_id` is omitted, plans the query intent, builds a standalone retrieval query from recent history and ticket context, retrieves evidence when needed, and answers with ticket state plus retrieved excerpts. |
-| GET | `/chat/{ticket_id}/history` | n/a | Returns the ticket chat history in chronological order. |
+| GET | `/chat/{ticket_id}/history` | n/a | Returns the ticket chat history in chronological order. Each message includes `status` (`succeeded`/`failed`). |
 
 `ChatResponse` includes the answer and sources plus planning/debug fields:
 `intent`, `standalone_query`, `answer_mode`, `target_profile`,
 `evidence_status`, `retrieved_evidence_scope`, and `answer_support_level`.
+
+On multi-turn follow-ups (turn 2+ in a session), `standalone_query` is built
+using an LLM condense step that resolves pronouns/ellipsis in the follow-up
+against recent conversation history (e.g. "is there an alternative?" ->
+"is there an alternative to midazolam for pediatric patients?"). This is
+best-effort: on failure it falls back to the prior raw-last-message
+heuristic, so chat never fails because of it.
+
+A chat turn that fails partway through (evidence retrieval or the LLM call
+erroring out) still persists the user's question and a `status=failed`
+assistant message, instead of silently rolling back with no DB trace. The
+client still receives an `INTERNAL_SERVER_ERROR` response either way.
 
 Chat answer modes:
 

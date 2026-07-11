@@ -33,6 +33,7 @@ from app.chat.handler import (
     get_session_messages,
     handle_chat,
 )
+from app.chat.planner import _CONDENSE_SYSTEM_PROMPT
 from app.rag.models import EvidenceResult as RagEvidenceResult
 from app.rag.models import EvidencePlan, EvidenceTarget, RetrievalContext, SufficiencyResult
 
@@ -111,19 +112,48 @@ class FakeChatChoice:
 
 
 class FakeChatCompletions:
-    def __init__(self, answer: str) -> None:
+    def __init__(
+        self,
+        answer: str,
+        condense_response: str | None = None,
+        fail_condense: bool = False,
+        fail_answer: bool = False,
+    ) -> None:
         self.answer = answer
+        self.condense_response = condense_response
+        self.fail_condense = fail_condense
+        self.fail_answer = fail_answer
         self.calls: list[dict] = []
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
+        is_condense_call = kwargs["messages"][0]["content"] == _CONDENSE_SYSTEM_PROMPT
+        if is_condense_call:
+            if self.fail_condense:
+                raise RuntimeError("condense call failed")
+            if self.condense_response is not None:
+                return SimpleNamespace(choices=[FakeChatChoice(self.condense_response)])
+            return SimpleNamespace(choices=[FakeChatChoice(self.answer)])
+        if self.fail_answer:
+            raise RuntimeError("chat completion failed")
         return SimpleNamespace(choices=[FakeChatChoice(self.answer)])
 
 
 class FakeLLMClient:
-    def __init__(self, answer: str = "Grounded answer (source: sop.md, section: procedure)") -> None:
-        self.completions = FakeChatCompletions(answer)
+    def __init__(
+        self,
+        answer: str = "Grounded answer (source: sop.md, section: procedure)",
+        condense_response: str | None = None,
+        fail_condense: bool = False,
+        fail_answer: bool = False,
+    ) -> None:
+        self.completions = FakeChatCompletions(answer, condense_response, fail_condense, fail_answer)
         self.chat = SimpleNamespace(completions=self.completions)
+
+
+class FailingEvidenceService:
+    def retrieve(self, *, query, context=None, top_k=5, filter_override=None):
+        raise RuntimeError("retrieval backend unavailable")
 
 
 def chunk(**overrides):
@@ -265,10 +295,25 @@ def test_handle_chat_reuses_same_session_across_calls_without_session_id(db_sess
     assert db_session.query(ChatMessage).filter(ChatMessage.ticket_id == ticket.id).count() == 4
 
 
-def test_handle_chat_builds_standalone_query_for_multi_turn_follow_up(db_session):
+def test_handle_chat_uses_llm_resolved_followup_in_standalone_query(db_session):
+    """
+    A multi-turn follow-up's standalone_query now uses the LLM-resolved,
+    coreference-resolved question (via reformulate_followup_query) instead
+    of just echoing the prior turn's raw message text.
+    """
     ticket = make_ticket(db_session, recall_number="D-REAL-2026-001", recall_number_is_fallback=False)
     evidence_service = FakeEvidenceService(chunks=[chunk()])
-    llm_client = FakeLLMClient()
+    # Deliberately avoids repeating any word (including common ones like
+    # "the") and avoids words already present in context_terms/intent_terms
+    # (drug name, recall_number, "quarantine", "recall", "procedure", etc.),
+    # since build_standalone_query's _dedupe_words removes any word that
+    # already occurred earlier in the assembled query -- a phrase reusing
+    # those words would get silently mangled and make this assertion brittle
+    # for reasons unrelated to what's under test here.
+    llm_client = FakeLLMClient(
+        answer="Grounded answer (source: sop.md, section: procedure)",
+        condense_response="Should pharmacists isolate affected inventory pending disposal instructions?",
+    )
 
     first = handle_chat(
         db=db_session,
@@ -290,12 +335,73 @@ def test_handle_chat_builds_standalone_query_for_multi_turn_follow_up(db_session
     assert second["intent"] == "recall_action"
     assert second["answer_mode"] == "retrieval_required"
     assert second["target_profile"] == "recall_action"
+    assert "Should pharmacists isolate affected inventory pending disposal instructions?" in second["standalone_query"]
+    # Current turn's raw query is always appended verbatim regardless of the
+    # resolved follow-up.
     assert "그럼 격리는 어떻게 해?" in second["standalone_query"]
-    assert "이 리콜에서 ICU 영향 있어?" in second["standalone_query"]
     assert "midazolam" in second["standalone_query"]
     assert "D-REAL-2026-001" in second["standalone_query"]
     assert evidence_service.calls[-1]["query"] == second["standalone_query"]
     assert evidence_service.calls[-1]["context"].target_profile == "recall_action"
+
+    condense_calls = [
+        call for call in llm_client.completions.calls
+        if call["messages"][0]["content"] == _CONDENSE_SYSTEM_PROMPT
+    ]
+    assert len(condense_calls) == 1
+    condense_prompt = condense_calls[0]["messages"][1]["content"]
+    assert "이 리콜에서 ICU 영향 있어?" in condense_prompt
+    assert "그럼 격리는 어떻게 해?" in condense_prompt
+
+
+def test_handle_chat_skips_condense_call_on_first_turn(db_session):
+    """No prior history on the first turn -- reformulate_followup_query
+    should short-circuit without making an LLM call at all."""
+    ticket = make_ticket(db_session)
+    evidence_service = FakeEvidenceService(chunks=[chunk()])
+    llm_client = FakeLLMClient()
+
+    handle_chat(
+        db=db_session,
+        public_ticket_id=ticket.ticket_id,
+        user_query="이 리콜에서 ICU 영향 있어?",
+        session_id=None,
+        retrieval_service=evidence_service,
+        llm_client=llm_client,
+    )
+
+    assert len(llm_client.completions.calls) == 1  # answer call only, no condense call
+
+
+def test_handle_chat_falls_back_to_raw_message_when_condense_call_fails(db_session):
+    """If the condense LLM call raises, chat must still succeed, falling
+    back to the existing raw-last-message heuristic."""
+    ticket = make_ticket(db_session, recall_number="D-REAL-2026-001", recall_number_is_fallback=False)
+    evidence_service = FakeEvidenceService(chunks=[chunk()])
+    llm_client = FakeLLMClient(
+        answer="Grounded answer (source: sop.md, section: procedure)",
+        fail_condense=True,
+    )
+
+    first = handle_chat(
+        db=db_session,
+        public_ticket_id=ticket.ticket_id,
+        user_query="이 리콜에서 ICU 영향 있어?",
+        session_id=None,
+        retrieval_service=evidence_service,
+        llm_client=llm_client,
+    )
+    second = handle_chat(
+        db=db_session,
+        public_ticket_id=ticket.ticket_id,
+        user_query="그럼 격리는 어떻게 해?",
+        session_id=first["session_id"],
+        retrieval_service=evidence_service,
+        llm_client=llm_client,
+    )
+
+    assert second["answer"] == "Grounded answer (source: sop.md, section: procedure)"
+    assert "이 리콜에서 ICU 영향 있어?" in second["standalone_query"]
 
 
 def test_handle_chat_answer_mode_ticket_state_only_skips_retrieval(db_session):
@@ -485,3 +591,112 @@ def test_get_session_messages_scoped_by_session_not_ticket(db_session):
     assert messages_a[0].content == "hello from session a"
     assert len(messages_b) == 1
     assert messages_b[0].content == "hello from session b"
+
+
+# ──────────────────────────────────────────────
+# Session/message status (issue #109 item B)
+# ──────────────────────────────────────────────
+
+def test_new_session_defaults_to_active_status(db_session):
+    ticket = make_ticket(db_session)
+
+    session = get_or_create_session(db_session, ticket.id, session_id=None)
+    db_session.commit()
+
+    assert session.status == "active"
+
+
+def test_successful_turn_saves_messages_with_succeeded_status(db_session):
+    ticket = make_ticket(db_session)
+    evidence_service = FakeEvidenceService(chunks=[chunk()])
+    llm_client = FakeLLMClient()
+
+    handle_chat(
+        db=db_session,
+        public_ticket_id=ticket.ticket_id,
+        user_query="What does the SOP say?",
+        session_id=None,
+        retrieval_service=evidence_service,
+        llm_client=llm_client,
+    )
+
+    messages = db_session.query(ChatMessage).filter(ChatMessage.ticket_id == ticket.id).all()
+    assert len(messages) == 2
+    assert all(message.status == "succeeded" for message in messages)
+
+
+def test_retrieval_failure_persists_user_question_and_failed_assistant_message(db_session):
+    """
+    Regression test: a retrieval failure previously called db.rollback(),
+    wiping out the just-created session and the user's just-saved question
+    -- a failed turn left zero trace in the DB. Now the question and a
+    failed-status assistant message must survive, and the client still gets
+    an error response.
+    """
+    from fastapi import HTTPException
+
+    ticket = make_ticket(db_session)
+    evidence_service = FailingEvidenceService()
+    llm_client = FakeLLMClient()
+
+    with pytest.raises(HTTPException) as exc_info:
+        handle_chat(
+            db=db_session,
+            public_ticket_id=ticket.ticket_id,
+            user_query="What does the SOP say?",
+            session_id=None,
+            retrieval_service=evidence_service,
+            llm_client=llm_client,
+        )
+
+    assert exc_info.value.status_code == 500
+
+    session = db_session.query(ChatSession).filter(ChatSession.ticket_id == ticket.id).first()
+    assert session is not None
+
+    messages = (
+        db_session.query(ChatMessage)
+        .filter(ChatMessage.ticket_id == ticket.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    assert len(messages) == 2
+    assert messages[0].role == "user"
+    assert messages[0].content == "What does the SOP say?"
+    assert messages[0].status == "succeeded"
+    assert messages[1].role == "assistant"
+    assert messages[1].status == "failed"
+
+
+def test_llm_failure_persists_user_question_and_failed_assistant_message(db_session):
+    """Same as the retrieval-failure regression test, but for the main
+    chat-completion call failing after evidence was already retrieved."""
+    from fastapi import HTTPException
+
+    ticket = make_ticket(db_session)
+    evidence_service = FakeEvidenceService(chunks=[chunk()])
+    llm_client = FakeLLMClient(fail_answer=True)
+
+    with pytest.raises(HTTPException) as exc_info:
+        handle_chat(
+            db=db_session,
+            public_ticket_id=ticket.ticket_id,
+            user_query="What does the SOP say?",
+            session_id=None,
+            retrieval_service=evidence_service,
+            llm_client=llm_client,
+        )
+
+    assert exc_info.value.status_code == 500
+
+    messages = (
+        db_session.query(ChatMessage)
+        .filter(ChatMessage.ticket_id == ticket.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    assert len(messages) == 2
+    assert messages[0].role == "user"
+    assert messages[0].status == "succeeded"
+    assert messages[1].role == "assistant"
+    assert messages[1].status == "failed"

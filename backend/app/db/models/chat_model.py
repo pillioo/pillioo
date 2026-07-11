@@ -22,6 +22,10 @@ class ChatSession(TimeStampedModel):
         nullable=False,
         index=True,
     )
+    # "active" | "closed". No close-session endpoint exists yet -- this is
+    # schema support for a future lifecycle action; every session is
+    # currently "active" for its whole life.
+    status = Column(String, nullable=False, default="active", server_default="active")
 
 
 class ChatMessage(TimeStampedModel):
@@ -42,3 +46,8 @@ class ChatMessage(TimeStampedModel):
     role = Column(String, nullable=False)          # "user" or "assistant"
     content = Column(Text, nullable=False)
     retrieved_sources = Column(JSONB, nullable=True)
+    # "succeeded" | "failed". User messages are always "succeeded" (saving
+    # the question can't itself fail in a meaningful way); assistant
+    # messages are "failed" when retrieval/LLM processing errored out, so a
+    # failed turn is still visible in chat history instead of vanishing.
+    status = Column(String, nullable=False, default="succeeded", server_default="succeeded")
