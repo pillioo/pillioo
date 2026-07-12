@@ -21,8 +21,8 @@ POST /approval/{ticket_id}/approve        -> freeze latest draft as final_v1
 GET  /reports/{ticket_id}/versions        -> verify draft/final version history
 ```
 
-`GET /tickets?recall_number=...` is currently a shortcut lookup, not a
-paginated ticket list.
+`GET /tickets` supports filtering and pagination; see the Tickets &
+Orchestration section below.
 
 ## Events
 
@@ -36,7 +36,7 @@ paginated ticket list.
 
 | Method | Path | Source | Description |
 |---|---|---|---|
-| GET | `/tickets` | `app/review/router.py` | Requires `recall_number`. Finds the most recent ticket for that recall number. This is not yet the frontend's full list/search API. |
+| GET | `/tickets` | `app/review/router.py` | Ticket list/search API. Supports `status`, `review_type`, `priority`, `recall_number`, and free-text `q` (matched against `drug_name`) filters, plus `limit`/`offset` pagination. Returns `{items, total, limit, offset}`. |
 | GET | `/tickets/{ticket_id}` | `app/review/ticket_detail.py` | Consolidated workflow screen payload: ticket status, priority, review type, `can_rerun`, failure reason, and ordered step statuses built from audit logs. |
 | POST | `/tickets/{ticket_id}/run` | `app/orchestration/router.py` | Runs or resumes the workflow for a created/failed ticket: inventory match, evidence retrieval, sufficiency gate, structured draft report generation, safety check, and policy routing. Already-processed tickets are returned idempotently. |
 | GET | `/tickets/{ticket_id}/evidence` | `app/rag/api.py` | Returns the latest durable workflow evidence snapshot for the ticket. This is the frontend/product evidence view and includes `snapshot_type`, `source_audit_log_id`, selected chunks, citations, sufficiency result, retrieval context, retrieval plan, and retrieval trace. For tickets processed before snapshots existed, falls back to `snapshot_type=legacy_ticket_evidence` reconstructed from ticket JSON fields when available. |
@@ -132,7 +132,6 @@ Chat answer modes:
 
 ## Known Gaps
 
-- `GET /tickets` is still a recall-number lookup. A frontend-grade list/search API should support filters such as `status`, `review_type`, `priority`, free-text query, `limit`, and `offset`.
 - Review payloads still expose flattened `draft_text`; structured report sections are available from `/reports/{ticket_id}` and `/reports/{ticket_id}/versions`.
 - `/events/upload` and `/events/collect` only create tickets. The frontend must call `/tickets/{ticket_id}/run` explicitly.
 - `/tickets/{ticket_id}/run`, chat retrieval, and LLM-backed draft/report generation require Milvus/OpenAI-compatible settings to be configured.
