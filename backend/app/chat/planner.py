@@ -18,6 +18,18 @@ RETRIEVAL_REQUIRED = "retrieval_required"
 HYBRID = "hybrid"
 
 
+_CONDENSE_SYSTEM_PROMPT = (
+    "You resolve pharmacist follow-up questions into standalone questions. "
+    "Given the conversation so far and a follow-up question, rewrite the "
+    "follow-up as a standalone question that makes sense with no prior "
+    "context, by resolving pronouns, ellipsis, and implicit references "
+    "(e.g. \"what about that?\", \"is there an alternative?\") using the "
+    "conversation. Do not answer the question. Do not add facts that are "
+    "not implied by the conversation. Keep it to one sentence. Reply with "
+    "only the rewritten question, nothing else."
+)
+
+
 @dataclass(frozen=True)
 class ChatPlan:
     intent: str
@@ -32,6 +44,7 @@ def build_chat_plan(
     user_query: str,
     recent_messages: list[ChatMessage],
     state: TicketState,
+    resolved_followup: str | None = None,
 ) -> ChatPlan:
     intent = classify_intent(user_query)
     answer_mode = answer_mode_for_intent(intent)
@@ -43,11 +56,60 @@ def build_chat_plan(
             recent_messages=recent_messages,
             state=state,
             intent=intent,
+            resolved_followup=resolved_followup,
         ),
         answer_mode=answer_mode,
         target_profile=target_profile,
         retrieved_evidence_scope=retrieved_evidence_scope_for_profile(target_profile),
     )
+
+
+def reformulate_followup_query(
+    *,
+    user_query: str,
+    recent_messages: list[ChatMessage],
+    llm_client: object,
+    model: str,
+) -> str | None:
+    """
+    Best-effort LLM resolution of a multi-turn follow-up (pronouns, ellipsis,
+    implicit references) into a standalone question, e.g. "is there an
+    alternative?" -> "is there an alternative to midazolam for pediatric
+    patients?". Returns None when there's no prior history to resolve
+    against, or on any failure -- callers must fall back to the existing
+    raw-last-message heuristic (build_standalone_query already does this
+    when resolved_followup is None). This is an enhancement, not a hard
+    dependency for chat to keep functioning.
+    """
+    if not recent_messages:
+        return None
+
+    history_text = "\n".join(
+        f"{message.role}: {message.content}" for message in recent_messages if message.content
+    )
+    if not history_text.strip():
+        return None
+
+    try:
+        completion = llm_client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _CONDENSE_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Conversation so far:\n{history_text}\n\n"
+                        f"Follow-up question: {user_query}\n\n"
+                        "Standalone question:"
+                    ),
+                },
+            ],
+            temperature=0,
+        )
+        resolved = completion.choices[0].message.content
+        return resolved.strip() if resolved and resolved.strip() else None
+    except Exception:
+        return None
 
 
 def classify_intent(user_query: str) -> str:
@@ -101,6 +163,7 @@ def build_standalone_query(
     recent_messages: list[ChatMessage],
     state: TicketState,
     intent: str,
+    resolved_followup: str | None = None,
 ) -> str:
     event = state.event_normalized
     context_terms = [
@@ -111,7 +174,10 @@ def build_standalone_query(
         event.lot if event else None,
         state.classification.value if state.classification else None,
     ]
-    topic = _recent_user_topic(recent_messages)
+    # LLM-resolved standalone question (coreference/ellipsis resolved against
+    # conversation history) takes priority over the raw last-message
+    # heuristic, when available -- see reformulate_followup_query.
+    topic = resolved_followup or _recent_user_topic(recent_messages)
     intent_terms = {
         RECALL_ACTION: "required actions quarantine storage recall procedure",
         LABEL_SAFETY: "label safety warnings contraindications boxed warning administration risk",

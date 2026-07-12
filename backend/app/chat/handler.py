@@ -23,6 +23,7 @@ from app.chat.planner import (
     RETRIEVAL_REQUIRED,
     TICKET_STATE_ONLY,
     build_chat_plan,
+    reformulate_followup_query,
 )
 from app.db.models.chat_model import ChatSession, ChatMessage
 from app.orchestration.retrieval_identity import resolve_retrieval_drug_name
@@ -101,6 +102,7 @@ def save_message(
     role: str,
     content: str,
     retrieved_sources: list[dict] | None = None,
+    status: str = "succeeded",
 ) -> ChatMessage:
     """
     Persist a message into chat_messages.
@@ -111,6 +113,7 @@ def save_message(
         role=role,
         content=content,
         retrieved_sources=retrieved_sources or [],
+        status=status,
         created_at=datetime.now(timezone.utc),
     )
     db.add(message)
@@ -287,12 +290,14 @@ def handle_chat(
     state = ticket_to_state(db, ticket)
 
     session = get_or_create_session(db, ticket.id, session_id)
+    # Commit the session immediately: a brand-new session must survive even
+    # if something later in this turn fails (see the failure paths below).
+    db.commit()
+
+    # Fetch planning history BEFORE saving the current user message, so on
+    # turn 1 it will be empty and reformulate_followup_query will correctly
+    # short-circuit without making an LLM call (no prior context to resolve).
     planning_history = get_session_messages(db, session.session_id, limit=5)
-    chat_plan = build_chat_plan(
-        user_query=user_query,
-        recent_messages=planning_history,
-        state=state,
-    )
 
     save_message(
         db=db,
@@ -300,6 +305,47 @@ def handle_chat(
         session_id=session.session_id,
         role="user",
         content=user_query,
+    )
+    # Commit the question immediately: it must not disappear if client
+    # initialization, retrieval, or the LLM call fails below (previously
+    # db.rollback() on those paths wiped out the just-saved session and
+    # question, leaving zero DB trace of a failed turn).
+    db.commit()
+
+    # Build the LLM client after persisting the user question so that
+    # initialization failures can be caught and persisted as failed assistant
+    # messages rather than leaving no trace of the turn.
+    try:
+        client = llm_client or build_llm_client()
+    except Exception:
+        db.rollback()
+        save_message(
+            db=db,
+            ticket_id=ticket.id,
+            session_id=session.session_id,
+            role="assistant",
+            content="LLM client initialization failed for this question.",
+            status="failed",
+        )
+        db.commit()
+        raise_review_error(
+            ReviewError.INTERNAL_SERVER_ERROR,
+            {"reason": "LLM client initialization failed"}
+        )
+    # Best-effort: only attempt on genuine follow-ups (turn 2+), and never
+    # let a condense failure block the chat turn -- falls back to the raw
+    # last-message heuristic inside build_chat_plan/build_standalone_query.
+    resolved_followup = reformulate_followup_query(
+        user_query=user_query,
+        recent_messages=planning_history,
+        llm_client=client,
+        model=settings.LLM_MODEL,
+    )
+    chat_plan = build_chat_plan(
+        user_query=user_query,
+        recent_messages=planning_history,
+        state=state,
+        resolved_followup=resolved_followup,
     )
 
     event = state.event_normalized
@@ -332,6 +378,15 @@ def handle_chat(
             )
         except Exception:
             db.rollback()
+            save_message(
+                db=db,
+                ticket_id=ticket.id,
+                session_id=session.session_id,
+                role="assistant",
+                content="Evidence retrieval failed for this question.",
+                status="failed",
+            )
+            db.commit()
             raise_review_error(
                 ReviewError.INTERNAL_SERVER_ERROR,
                 {"reason": "Evidence retrieval failed"}
@@ -352,7 +407,6 @@ def handle_chat(
         state_summary = build_ticket_state_summary(state, workflow_stage=ticket.workflow_stage)
         chat_history_text = build_chat_history_context(history_messages)
 
-        client = llm_client or build_llm_client()
         try:
             completion = client.chat.completions.create(
                 model=settings.LLM_MODEL,
@@ -376,6 +430,16 @@ def handle_chat(
                 answer = "Sorry, a response could not be generated."
         except Exception:
             db.rollback()
+            save_message(
+                db=db,
+                ticket_id=ticket.id,
+                session_id=session.session_id,
+                role="assistant",
+                content="Chat completion failed for this question.",
+                retrieved_sources=sources,
+                status="failed",
+            )
+            db.commit()
             raise_review_error(
                 ReviewError.INTERNAL_SERVER_ERROR,
                 {"reason": "Chat completion failed"}
@@ -457,6 +521,7 @@ def get_chat_history(
             "content": msg.content,
             "retrieved_sources": msg.retrieved_sources or [],
             "created_at": msg.created_at,
+            "status": msg.status,
         }
         for msg in messages
     ]
