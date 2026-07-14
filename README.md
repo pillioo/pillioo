@@ -1,165 +1,99 @@
-# PILLIOO Backend
+# Pillioo Backend
 
-AI-powered pharmaceutical recall workflow engine built with FastAPI.
+## Overview
 
-FDA 의약품 리콜 데이터를 기반으로 AI가 리콜을 분석하고 보고서를 생성하며 약사 검토 Workflow를 지원하는 백엔드 시스템입니다.
+Pillioo Backend는 의약품 리콜 및 안전 이벤트를 티켓 기반 워크플로우로 처리하는 백엔드 시스템입니다.
 
----
+재고 영향 확인, RAG 기반 근거 검색, 보고서 초안 생성, 약사 검토, 티켓 기반 채팅, 감사 이력 관리를 지원합니다.
 
-# Overview | 프로젝트 소개
+The backend is designed as a decision-support system. Generated drafts and workflow outputs are reviewable artifacts, not autonomous medical or operational decisions.
 
-## English
-
-PILLIOO Backend is an AI-driven pharmaceutical recall workflow platform designed to automate recall analysis and report generation.
-
-The system retrieves pharmaceutical evidence through Retrieval-Augmented Generation (RAG), generates structured reports using LLMs, and supports pharmacist review before final approval.
-
-The backend emphasizes explainability, auditability, and safe AI-assisted pharmaceutical workflows.
-
----
-
-## 한국어
-
-PILLIOO Backend는 AI 기반 의약품 리콜 분석 및 보고서 생성 시스템입니다.
-
-FDA 리콜 데이터를 기반으로 관련 근거 문서를 검색(RAG)하고, LLM을 활용하여 구조화된 보고서를 생성하며, 약사의 검토를 거쳐 최종 보고서를 관리합니다.
-
-설명 가능성과 감사 가능성을 고려한 안전한 AI Workflow를 목표로 개발되었습니다.
-
----
-
-# Features | 주요 기능
-
-- Event normalization
-- Inventory matching
-- Evidence retrieval (RAG)
-- AI report generation
-- Safety validation
-- Pharmacist review workflow
-- Report version management
-- Audit logging
-
----
-
-# Tech Stack
-
-## Backend
-
-- FastAPI
-- Python
-- SQLAlchemy
-- Alembic
-
-## Database
-
-- PostgreSQL
-- Milvus
-
-## AI
-
-- OpenAI GPT
-- Retrieval-Augmented Generation (RAG)
-
-## Infrastructure
-
-- Docker
-- Docker Compose
-- AWS EC2
-
----
-
-# Architecture
+## Project Structure
 
 ```text
-FDA Recall Data
-        │
-        ▼
- Event Normalization
-        │
-        ▼
- Inventory Matching
-        │
-        ▼
- Evidence Retrieval
-        │
-        ▼
- AI Draft Generation
-        │
-        ▼
- Safety Validation
-        │
-        ▼
- Pharmacist Review
-        │
-        ▼
- Final Report
+backend/
+├─ app/
+│  ├─ event/
+│  ├─ inventory/
+│  ├─ orchestration/
+│  ├─ rag/
+│  ├─ review/
+│  ├─ chat/
+│  └─ db/
+├─ scripts/rag/
+├─ tests/
+└─ docker-compose.yml
 ```
 
----
+| Path | Responsibility |
+|---|---|
+| `app/event/` | 안전 이벤트 수집, 정규화 및 중복 처리 |
+| `app/inventory/` | 내부 재고 매칭 및 영향 확인 |
+| `app/orchestration/` | 티켓 기반 워크플로우 실행 |
+| `app/rag/` | 근거 검색, reranking, 충분성 평가 및 evidence snapshot 관리 |
+| `app/review/` | 약사 검토, 승인, 보고서 버전 및 감사 이력 처리 |
+| `app/chat/` | 티켓 범위의 근거 기반 채팅 |
+| `app/db/` | SQLAlchemy session 및 database model 관리 |
+| `scripts/rag/` | Chunking, embedding, Milvus loading 및 retrieval evaluation |
+| `tests/` | Backend test suite |
 
-# Project Structure
+## Getting Started
 
-```text
-app/
-├── audit/
-├── dashboard/
-├── db/
-├── orchestration/
-├── rag/
-├── report/
-├── review/
-├── workflow/
-├── schemas/
-└── main.py
+```powershell
+cd backend
+Copy-Item .env.example .env
+docker compose up -d postgres fastapi
 ```
 
----
+위 명령은 PostgreSQL과 FastAPI를 포함한 core backend runtime을 실행합니다.
 
-# Getting Started
+## Environment Variables
 
-Install dependencies
+백엔드 실행 전 `.env.example`을 복사해 환경변수를 설정합니다.
 
-```bash
-pip install -r requirements.txt
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection URL |
+| `OPENAI_API_KEY` | LLM API key |
+| `LLM_MODEL` | 보고서 초안, 채팅 및 수정에 사용하는 model |
+| `EMBEDDING_MODEL` | Evidence embedding model |
+| `MILVUS_URI` | Milvus connection URI |
+| `MILVUS_COLLECTION` | Evidence collection name |
+
+실제 API key, password, deployment URL은 Git에 커밋하지 않습니다.
+
+## RAG Setup
+
+RAG workflow를 실행하려면 Milvus, MinIO, etcd가 필요합니다.
+
+```powershell
+docker compose --profile rag up -d etcd minio milvus
 ```
 
-Run services
+Chunking, embedding, Milvus loading, retrieval evaluation 관련 스크립트는 `scripts/rag/`에서 확인할 수 있습니다.
 
-```bash
-docker compose up -d
+Milvus collection이 비어 있으면 evidence retrieval과 grounded report generation이 정상적으로 동작하지 않을 수 있습니다.
+
+## API Overview
+
+| Group | Purpose |
+|---|---|
+| Events | 안전 이벤트 수집 및 정규화 |
+| Tickets | Workflow 실행 및 ticket 상태 조회 |
+| Inventory | 내부 재고 영향 확인 |
+| Evidence | Evidence snapshot 및 retrieval trace 조회 |
+| Reports | 생성된 보고서와 version history 조회 |
+| Review | 약사 검토, 승인, 반려 및 수정 |
+| Chat | 티켓 범위의 evidence-grounded chat |
+| Audit | Workflow 및 review history 조회 |
+
+Detailed request and response schemas are available through the FastAPI Swagger UI in the running environment.
+
+## Testing
+
+```powershell
+cd backend
+pytest
 ```
 
-Run server
-
-```bash
-uvicorn app.main:app --reload
-```
-
----
-
-# Deployment
-
-Backend is deployed on AWS EC2.
-
-Core infrastructure includes:
-
-- FastAPI
-- PostgreSQL
-- Milvus
-- Docker Compose
-
----
-
-# Team
-
-| Name | Role |
-|------|------|
-| Jihee Bang | Backend · Infrastructure |
-| Jimin Kim | Frontend |
-| Yoon Kong | AI · Backend |
-
----
-
-# License
-
-This project was developed for academic and hackathon purposes.
+The test suite covers workflow orchestration, RAG retrieval, evidence sufficiency, report generation, review, chat, safety checks, and audit logging.
